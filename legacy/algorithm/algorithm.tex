@@ -1,0 +1,94 @@
+% !TEX encoding = UTF-8 Unicode
+% !TEX TS-program = pdflatex
+% !TEX spellcheck = en_US
+\documentclass[a4paper,12pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+
+\usepackage{microtype,indentfirst}
+\usepackage{amsmath,listings,booktabs,multirow}
+
+\usepackage{anyfontsize}
+
+\usepackage{hyperref}
+\hypersetup{
+  colorlinks   = true,    % Colours links instead of ugly boxes
+  urlcolor     = blue,    % Colour for external hyperlinks
+  linkcolor    = blue,    % Colour of internal links
+  citecolor    = blue      % Colour of citations
+}
+\usepackage[nameinlink,noabbrev,capitalise]{cleveref}
+
+\title{Voltorb Flip}
+\date{Last update: \today}
+\author{Gimmy}
+
+\usepackage{amsthm}
+\newtheorem{defn}{Definition}
+
+\begin{document}
+\maketitle
+
+\section{Introduction}
+
+Voltorb Flip is a minigame in the non-Japanese versions of Pokémon HeartGold \& SoulSilver. Every \emph{game} of Voltorb Flip presents the player with a \emph{board} of $5\times5$ \emph{panels}, initially \emph{covered}. Each of these panels can then be \emph{flipped} to reveal the underlying \emph{value}, which can be one of the following: 0 (depicted as a Voltorb), 1, 2 or 3. Panels with values of 2 or 3 are called \emph{multipliers}. The game is \emph{lost} when a panel with a value of 0 is flipped, and \emph{won} when all multipliers have been flipped. The player is then awarded with an amount of coins equal to the product of the values of the flippped panels. At any point of the game, after having flipped at least one panel, the player may also choose to \emph{quit} early, collecting coins with the same rule as before.
+
+Next to every row and column of the board, two numbers are displayed to give the player information on the values of the panels in the corresponding row or column. The first one equals the sum of the values of the panels; the second one equals the number of panels with a value of 0.
+
+There are 8 different \emph{levels} of Voltorb Flip. Generically speaking, the higher the level, the higher the number of panels with values 0, 2 and 3, making the game both harder to win and with larger coin payout. Every session of Voltorb Flip will start at level 1. When a game is won, the next game will have the level increased by 1 (except if the game won was already of level 8). When a game is lost, the panels flipped before the 0 are counted. If this number is less than the current level, the level of the next game is set equal to this number (or to 1, if the player immediately flipped a 0); otherwise, the level stays the same. There is one exception to this: level 8 is only unlocked after winning 5 games in a row, with at least 8 panels flipped in each of them.
+
+\section{Examples}
+
+\section{Board generation}
+
+The game generates 
+
+\begin{tabular}{c|c|c|c|c|c|c|c|c|c|c}
+$n_0$ & 6 & 6 & 6 & 6 & 6 & 6 & 6 & 6 & 6 & 6 \\
+\hline
+$n_2$ & 3 & 0 & 5 & 2 & 4 & 3 & 0 & 5 & 2 & 4 \\
+\end{tabular}
+
+	{{6,3,1,3,3},{6,0,3,2,2},{6,5,0,4,3},{6,2,2,3,3},{6,4,1,4,3},{6,3,1,3,3},{6,0,3,2,2},{6,5,0,4,3},{6,2,2,3,3},{6,4,1,4,3}},
+	{{7,1,3,3,2},{7,6,0,4,3},{7,3,2,3,2},{7,0,4,3,2},{7,5,1,4,3},{7,1,3,2,2},{7,6,0,3,3},{7,3,2,2,2},{7,0,4,2,2},{7,5,1,3,3}},
+	{{8,2,3,3,2},{8,7,0,4,3},{8,4,2,4,3},{8,1,4,3,2},{8,6,1,3,4},{8,2,3,2,2},{8,7,0,3,3},{8,4,2,3,3},{8,1,4,2,2},{8,6,1,3,3}},
+	{{8,3,3,3,4},{8,0,5,3,2},{10,8,0,5,4},{10,5,2,4,3},{10,2,4,4,3},{8,3,3,3,3},{8,0,5,2,2},{10,8,0,4,4},{10,5,2,3,3},{10,2,4,3,3}},
+	{{10,7,1,5,4},{10,4,3,4,3},{10,1,5,4,3},{10,9,0,5,4},{10,6,2,5,4},{10,7,1,4,4},{10,4,3,3,3},{10,1,5,3,3},{10,9,0,4,4},{10,6,2,4,4}},
+	{{10,3,4,4,3},{10,0,6,4,3},{10,8,1,5,4},{10,5,3,5,4},{10,2,5,4,3},{10,3,4,3,3},{10,0,6,3,3},{10,8,1,4,4},{10,5,3,4,4},{10,2,5,3,3}},
+	{{10,7,2,5,4},{10,4,4,5,4},{13,1,6,4,3},{13,9,1,6,5},{10,6,3,5,4},{10,7,2,4,4},{10,4,4,4,4},{13,1,6,3,3},{13,9,1,5,5},{10,6,3,4,4}},
+	{{10,0,7,4,3},{10,8,2,6,5},{10,5,4,5,4},{10,2,6,5,4},{10,7,3,6,5},{10,0,7,3,3},{10,8,2,5,5},{10,5,4,4,4},{10,2,6,4,4},{10,7,3,5,5}}
+
+\newpage
+
+old:
+
+Let $b$ be a (partially unflipped) board and define $f$ such that
+\begin{itemize}
+\item if $b$ is winning, then $f(b)=1$;
+\item if $b$ is losing (i.e.: has at least one Voltorb flipped), then $f(b)=0$;
+\item otherwise, for each unflipped panel $p$, for each value $v$ such panel can hide, let $b'(b,p,v)$ be the board obtained from $b$ flipping the panel $p$ with value $v$. Let $N(b)$ be the number of possible boards compatible with $b$. Then, define
+\[f(b)=\max_p\biggl\{\frac{\sum_vN(b'(b,p,v))f(b'(b,p,v))}{N(b)}\biggr\}.\]
+The best panel is the one that realizes the maximum.
+
+\hrule
+otherwise, for each unflipped panel $p$, let $P(b,v,p)$ be the probability that such panel hides the value $v$, and $b'(b,p,v)$ be the board obtained from $b$ flipping the panel $p$ with value $v$. Then, define
+\[f(b)=\max_p\biggl\{\sum_vP(b,p,v)f(b'(b,p,v))\biggr\}.\]
+The best panel is the one that realizes the maximum. Let $N_t(b)$ be the number of possible boards of type $t$ compatible with $b$, and $a_t$ be the acceptance rate of the type $t$. Then,
+\[P(b,p,v)=\sum_tP(t|b)\frac{N_t(b'(b,p,v))}{N_t(b)},\]
+where, using Bayes' theorem and $P(t)=1/10=\text{const.}$,
+\[P(t|b)=\frac{P(b|t)P(t)}{P(b)}=\frac{N_t(b)/N_t}{\sum_{t'} N_{t'}(b)/N_t}.\]
+Here, $N_t$ is the number of boards of type $t$. This is equal to
+\[N_t=a_t\,\frac{25!}{n_0!n_1!n_2!n_3!}.\]
+\end{itemize}
+
+
+\begin{enumerate}
+\item Flip all cards on rows or columns with zero Voltorb.
+\item For each unflipped panel, deduce the possible numbers it can hide (using info from the sums and the board types).
+\item If there are unflipped panels that can't be Voltorb, flip them and go back to point 2.
+\item Using info from point 2 (and from the sums and the board types), generate all possible compatible boards.
+\item Compute $f(b)$ and flip the panel that realizes the maximum.
+\end{enumerate}
+
+\end{document}

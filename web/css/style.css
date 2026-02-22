@@ -1,0 +1,691 @@
+/* Voltorb Flip - Pixel Art Style CSS */
+
+:root {
+    /* Colors */
+    --bg-color: #2a3a4a;
+    --panel-bg: #1a2530;
+    --tile-covered-dark: #4a8c4a;
+    --tile-covered-light: #5ca85c;
+    --tile-revealed: #c4a66a;
+    --tile-revealed-dark: #a08050;
+    --tile-one: #ffffff;
+    --tile-two: #ffd700;
+    --tile-three: #ff6b6b;
+    --voltorb-bg: #3a3a3a;
+    --voltorb-red: #ff4444;
+    --voltorb-white: #ffffff;
+    --hint-orange: #ff8c42;
+    --hint-orange-dark: #cc6622;
+    --hint-blue: #4a7cc4;
+    --hint-blue-dark: #385a8c;
+    --text-color: #ffffff;
+    --text-shadow: #000000;
+    --safe-color: #44cc44;
+    --low-risk-color: #88cc44;
+    --medium-risk-color: #cccc44;
+    --high-risk-color: #cc4444;
+    --suggestion-color: #ffdd44;
+    --border-color: #222;
+    --modal-overlay: rgba(0, 0, 0, 0.7);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Courier New', monospace;
+    background: var(--bg-color);
+    color: var(--text-color);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 20px;
+}
+
+.container {
+    max-width: 900px;
+    width: 100%;
+}
+
+/* Header */
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 10px;
+    background: var(--panel-bg);
+    border-radius: 8px;
+    border: 2px solid var(--border-color);
+}
+
+h1 {
+    font-size: 24px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    text-shadow: 2px 2px 0 var(--text-shadow);
+}
+
+.mode-toggle {
+    display: flex;
+    gap: 8px;
+}
+
+.mode-btn {
+    padding: 8px 16px;
+    font-family: inherit;
+    font-size: 14px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    border: 2px solid var(--border-color);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.mode-btn:hover {
+    background: var(--hint-blue);
+}
+
+.mode-btn.active {
+    background: var(--hint-orange);
+    border-color: var(--hint-orange-dark);
+}
+
+/* Main Game Area */
+main {
+    display: flex;
+    justify-content: center;
+}
+
+.game-area {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+/* Board Container */
+.board-container {
+    display: flex;
+    gap: 4px;
+}
+
+.board-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+/* Tiles Area - 5x5 grid */
+.tiles-area {
+    display: grid;
+    grid-template-columns: repeat(5, 64px);
+    grid-template-rows: repeat(5, 64px);
+    gap: 4px;
+}
+
+/* Individual Tile */
+.tile {
+    width: 64px;
+    height: 64px;
+    border: 3px solid var(--border-color);
+    border-radius: 4px;
+    cursor: pointer;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 28px;
+    font-weight: bold;
+    transition: transform 0.1s, box-shadow 0.1s;
+    image-rendering: pixelated;
+}
+
+.tile:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+    z-index: 1;
+}
+
+.tile.suggested {
+    box-shadow: 0 0 0 4px var(--suggestion-color), 0 0 15px var(--suggestion-color);
+}
+
+/* Covered tile - checkered pattern */
+.tile.covered {
+    background:
+        linear-gradient(45deg, var(--tile-covered-dark) 25%, transparent 25%),
+        linear-gradient(-45deg, var(--tile-covered-dark) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, var(--tile-covered-dark) 75%),
+        linear-gradient(-45deg, transparent 75%, var(--tile-covered-dark) 75%);
+    background-size: 16px 16px;
+    background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+    background-color: var(--tile-covered-light);
+}
+
+/* Revealed tile */
+.tile.revealed {
+    background: linear-gradient(135deg, var(--tile-revealed) 0%, var(--tile-revealed-dark) 100%);
+    text-shadow: 2px 2px 0 var(--text-shadow);
+}
+
+.tile.revealed.one {
+    color: var(--tile-one);
+}
+
+.tile.revealed.two {
+    color: var(--tile-two);
+}
+
+.tile.revealed.three {
+    color: var(--tile-three);
+}
+
+/* Voltorb tile */
+.tile.voltorb {
+    background: var(--voltorb-bg);
+}
+
+.tile.voltorb::before {
+    content: '';
+    width: 44px;
+    height: 44px;
+    background: radial-gradient(circle at 30% 30%, var(--voltorb-white) 0%, var(--voltorb-white) 45%, var(--voltorb-red) 50%);
+    border-radius: 50%;
+    border: 2px solid var(--border-color);
+}
+
+.tile.voltorb::after {
+    content: '';
+    position: absolute;
+    width: 8px;
+    height: 14px;
+    background: var(--voltorb-red);
+    bottom: 38px;
+    border-radius: 2px;
+}
+
+/* Probability overlay on covered tiles */
+.tile .prob-overlay {
+    position: absolute;
+    bottom: 2px;
+    left: 2px;
+    right: 2px;
+    height: 10px;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.tile .prob-bar {
+    height: 100%;
+    transition: width 0.3s, background-color 0.3s;
+}
+
+.tile .prob-bar.safe { background: var(--safe-color); }
+.tile .prob-bar.low-risk { background: var(--low-risk-color); }
+.tile .prob-bar.medium-risk { background: var(--medium-risk-color); }
+.tile .prob-bar.high-risk { background: var(--high-risk-color); }
+
+/* Probability text */
+.tile .prob-text {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    font-size: 10px;
+    background: rgba(0, 0, 0, 0.6);
+    padding: 1px 3px;
+    border-radius: 2px;
+    display: none;
+}
+
+.tile.covered:hover .prob-text {
+    display: block;
+}
+
+/* Column Hints */
+.col-hints {
+    display: grid;
+    grid-template-columns: repeat(5, 64px);
+    gap: 4px;
+}
+
+/* Row Hints */
+.row-hints {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+/* Hint Panel */
+.hint-panel {
+    width: 64px;
+    height: 64px;
+    background: var(--hint-orange);
+    border: 3px solid var(--hint-orange-dark);
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: transform 0.1s;
+}
+
+.hint-panel:hover {
+    transform: scale(1.05);
+}
+
+.hint-panel.col-hint {
+    background: var(--hint-blue);
+    border-color: var(--hint-blue-dark);
+}
+
+.hint-sum {
+    font-size: 22px;
+    font-weight: bold;
+    text-shadow: 1px 1px 0 var(--text-shadow);
+}
+
+.hint-voltorb {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 14px;
+}
+
+.hint-voltorb-icon {
+    width: 16px;
+    height: 16px;
+    background: radial-gradient(circle at 30% 30%, var(--voltorb-white) 0%, var(--voltorb-white) 40%, var(--voltorb-red) 45%);
+    border-radius: 50%;
+    border: 1px solid var(--border-color);
+}
+
+/* Side Panel */
+.side-panel {
+    width: 200px;
+    background: var(--panel-bg);
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.panel-section {
+    background: rgba(0, 0, 0, 0.2);
+    padding: 10px;
+    border-radius: 4px;
+}
+
+.panel-section label {
+    font-size: 12px;
+    display: block;
+    margin-bottom: 4px;
+}
+
+#levelSelect {
+    width: 100%;
+    padding: 6px;
+    font-family: inherit;
+    font-size: 14px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    border: 2px solid var(--border-color);
+    border-radius: 4px;
+}
+
+/* Win Probability */
+.win-prob-label, .suggestion-label, .stats-label, .legend-title {
+    font-size: 12px;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.win-prob-value {
+    font-size: 28px;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 6px;
+}
+
+.win-prob-bar {
+    height: 8px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.win-prob-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--high-risk-color), var(--medium-risk-color), var(--safe-color));
+    transition: width 0.3s;
+    width: 0%;
+}
+
+/* Suggestion */
+.suggestion-value {
+    font-size: 16px;
+    text-align: center;
+    padding: 8px;
+    background: rgba(255, 221, 68, 0.2);
+    border-radius: 4px;
+}
+
+/* Controls */
+.control-btn {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 6px;
+    font-family: inherit;
+    font-size: 14px;
+    background: var(--hint-blue);
+    color: var(--text-color);
+    border: 2px solid var(--hint-blue-dark);
+    border-radius: 4px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.2s;
+}
+
+.control-btn:last-child {
+    margin-bottom: 0;
+}
+
+.control-btn:hover:not(:disabled) {
+    background: var(--hint-orange);
+    border-color: var(--hint-orange-dark);
+}
+
+.control-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Speed Control */
+.speed-control {
+    margin-top: 8px;
+}
+
+.speed-control label {
+    display: block;
+    font-size: 12px;
+    margin-bottom: 4px;
+}
+
+#speedSlider {
+    width: 100%;
+}
+
+/* Stats */
+.stats-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+
+/* Legend */
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    margin-bottom: 4px;
+}
+
+.legend-color {
+    width: 16px;
+    height: 12px;
+    border-radius: 2px;
+}
+
+.legend-color.safe { background: var(--safe-color); }
+.legend-color.low-risk { background: var(--low-risk-color); }
+.legend-color.medium-risk { background: var(--medium-risk-color); }
+.legend-color.high-risk { background: var(--high-risk-color); }
+
+/* Modals */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--modal-overlay);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+}
+
+.modal-content {
+    background: var(--panel-bg);
+    border: 3px solid var(--border-color);
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    min-width: 250px;
+}
+
+.modal-title {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 16px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Tile value buttons in modal */
+.modal-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 16px;
+}
+
+.tile-value-btn {
+    width: 56px;
+    height: 56px;
+    border: 3px solid var(--border-color);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 24px;
+    font-weight: bold;
+    font-family: inherit;
+    transition: transform 0.1s;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.tile-value-btn:hover {
+    transform: scale(1.1);
+}
+
+.tile-value-btn.voltorb {
+    background: var(--voltorb-bg);
+}
+
+.tile-value-btn.voltorb .voltorb-icon {
+    width: 36px;
+    height: 36px;
+    background: radial-gradient(circle at 30% 30%, var(--voltorb-white) 0%, var(--voltorb-white) 40%, var(--voltorb-red) 45%);
+    border-radius: 50%;
+    border: 2px solid var(--border-color);
+}
+
+.tile-value-btn.one {
+    background: var(--tile-revealed);
+    color: var(--tile-one);
+}
+
+.tile-value-btn.two {
+    background: var(--tile-revealed);
+    color: var(--tile-two);
+}
+
+.tile-value-btn.three {
+    background: var(--tile-revealed);
+    color: var(--tile-three);
+}
+
+.modal-cancel, .modal-ok {
+    padding: 8px 20px;
+    font-family: inherit;
+    font-size: 14px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    border: 2px solid var(--border-color);
+    border-radius: 4px;
+    cursor: pointer;
+    margin: 4px;
+}
+
+.modal-ok {
+    background: var(--safe-color);
+    border-color: #339933;
+}
+
+.modal-cancel:hover {
+    background: var(--high-risk-color);
+}
+
+.modal-ok:hover {
+    background: #55dd55;
+}
+
+/* Hint Edit Modal */
+.hint-inputs {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.hint-input-group {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.hint-input-group label {
+    font-size: 14px;
+}
+
+.hint-input-group input {
+    width: 60px;
+    padding: 6px;
+    font-family: inherit;
+    font-size: 16px;
+    text-align: center;
+    background: var(--bg-color);
+    color: var(--text-color);
+    border: 2px solid var(--border-color);
+    border-radius: 4px;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+
+/* Game Over Modal */
+.modal-content.game-over {
+    min-width: 300px;
+}
+
+.game-over-message {
+    font-size: 16px;
+    margin-bottom: 16px;
+    padding: 10px;
+}
+
+/* Self-play animation */
+@keyframes reveal-pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+.tile.revealing {
+    animation: reveal-pulse 0.3s ease-in-out;
+}
+
+/* Responsive */
+@media (max-width: 700px) {
+    .game-area {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .side-panel {
+        width: 100%;
+        max-width: 340px;
+    }
+
+    .tiles-area {
+        grid-template-columns: repeat(5, 52px);
+        grid-template-rows: repeat(5, 52px);
+    }
+
+    .col-hints {
+        grid-template-columns: repeat(5, 52px);
+    }
+
+    .tile, .hint-panel {
+        width: 52px;
+        height: 52px;
+    }
+
+    .tile {
+        font-size: 22px;
+    }
+
+    .hint-sum {
+        font-size: 18px;
+    }
+}
+
+@media (max-width: 400px) {
+    .tiles-area {
+        grid-template-columns: repeat(5, 44px);
+        grid-template-rows: repeat(5, 44px);
+    }
+
+    .col-hints {
+        grid-template-columns: repeat(5, 44px);
+    }
+
+    .tile, .hint-panel {
+        width: 44px;
+        height: 44px;
+    }
+
+    .tile {
+        font-size: 18px;
+    }
+
+    .hint-sum {
+        font-size: 16px;
+    }
+
+    .hint-voltorb {
+        font-size: 12px;
+    }
+
+    .hint-voltorb-icon {
+        width: 12px;
+        height: 12px;
+    }
+}
