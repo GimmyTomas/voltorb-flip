@@ -616,10 +616,20 @@ export function estimateWinProbability(board, compatibleBoards, probabilities) {
     // This is a simplification - full minimax would be more accurate
     const survivalProb = 1 - panelProb.pVoltorb;
 
-    // Multiply by estimate of future success
-    const unknownCount = board.countUnknown();
-    const avgVoltorbProb = probabilities.panels.reduce((sum, p) => sum + p.pVoltorb, 0) / probabilities.panels.length;
-    const estimatedFutureSuccess = Math.pow(1 - avgVoltorbProb, Math.max(1, unknownCount / 3));
+    // Calculate average voltorb probability only for RISKY panels (exclude safe ones)
+    // Safe panels don't contribute to risk since we can reveal them freely
+    const riskyPanels = probabilities.panels.filter(p => p.pVoltorb > 0);
+
+    if (riskyPanels.length === 0) {
+        // All remaining panels are safe - guaranteed win
+        return 1.0;
+    }
+
+    const avgVoltorbProb = riskyPanels.reduce((sum, p) => sum + p.pVoltorb, 0) / riskyPanels.length;
+
+    // Estimate future success based on risky panels we need to reveal
+    // Use risky panel count, not total unknown count
+    const estimatedFutureSuccess = Math.pow(1 - avgVoltorbProb, Math.max(1, riskyPanels.length / 3));
 
     return survivalProb * Math.max(0.3, estimatedFutureSuccess);
 }
