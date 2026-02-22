@@ -371,6 +371,69 @@ export class UI {
         }
     }
 
+    // Update solver info (compatible boards and type probabilities)
+    updateSolverInfo(compatibleCount, typeProbs) {
+        const countEl = document.getElementById('compatibleCount');
+        const listEl = document.getElementById('boardTypesList');
+
+        if (compatibleCount === null || compatibleCount === undefined) {
+            countEl.textContent = '--';
+            listEl.innerHTML = '<div style="color: rgba(255,255,255,0.5); font-style: italic;">Click Solve to analyze</div>';
+            return;
+        }
+
+        // Format compatible count with thousands separator
+        countEl.textContent = compatibleCount.toLocaleString();
+
+        // Render type probabilities
+        listEl.innerHTML = '';
+
+        if (!typeProbs || typeProbs.length === 0) {
+            listEl.innerHTML = '<div style="color: rgba(255,255,255,0.5);">No data</div>';
+            return;
+        }
+
+        // Find max probability for scaling
+        const maxProb = Math.max(...typeProbs);
+
+        // Create rows for each type with non-zero probability
+        for (let i = 0; i < typeProbs.length; i++) {
+            const prob = typeProbs[i];
+            if (prob < 0.001) continue; // Skip near-zero probabilities
+
+            const row = document.createElement('div');
+            row.className = 'board-type-row';
+
+            const indexEl = document.createElement('span');
+            indexEl.className = 'board-type-index';
+            indexEl.textContent = `T${i}`;
+
+            const barContainer = document.createElement('div');
+            barContainer.className = 'board-type-bar-container';
+
+            const bar = document.createElement('div');
+            bar.className = 'board-type-bar';
+            bar.style.width = `${(prob / maxProb) * 100}%`;
+
+            barContainer.appendChild(bar);
+
+            const percentEl = document.createElement('span');
+            percentEl.className = 'board-type-percent';
+            percentEl.textContent = `${(prob * 100).toFixed(1)}%`;
+
+            row.appendChild(indexEl);
+            row.appendChild(barContainer);
+            row.appendChild(percentEl);
+
+            listEl.appendChild(row);
+        }
+
+        // If no types shown (all zero), show message
+        if (listEl.children.length === 0) {
+            listEl.innerHTML = '<div style="color: rgba(255,255,255,0.5);">No compatible types</div>';
+        }
+    }
+
     // Update statistics
     updateStats(played, won) {
         this.gamesPlayed.textContent = played;

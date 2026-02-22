@@ -237,7 +237,7 @@ class App {
 
         this.ui.renderBoard(this.board, probs, suggested, safePanels);
 
-        // Update win probability
+        // Update win probability and solver info
         if (this.solverResult) {
             this.ui.updateWinProbability(this.solverResult.winProbability);
 
@@ -246,9 +246,16 @@ class App {
                 p.row === suggested.row && p.col === suggested.col
             );
             this.ui.updateSuggestion(suggested, isSafe);
+
+            // Update solver info (compatible boards and type probabilities)
+            this.ui.updateSolverInfo(
+                this.solverResult.compatibleCount,
+                this.solverResult.probabilities?.typeProbs
+            );
         } else {
             this.ui.updateWinProbability(null);
             this.ui.updateSuggestion(null);
+            this.ui.updateSolverInfo(null, null);
         }
 
         // Update undo button

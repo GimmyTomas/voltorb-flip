@@ -426,6 +426,65 @@ main {
     width: 100%;
 }
 
+/* Solver Info */
+.solver-info-label, .board-types-label {
+    font-size: 12px;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.solver-info-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    margin-bottom: 8px;
+}
+
+.board-types-container {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.board-types-list {
+    max-height: 150px;
+    overflow-y: auto;
+    font-size: 11px;
+}
+
+.board-type-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 3px;
+    gap: 6px;
+}
+
+.board-type-index {
+    width: 24px;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.board-type-bar-container {
+    flex: 1;
+    height: 12px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.board-type-bar {
+    height: 100%;
+    background: var(--hint-blue);
+    transition: width 0.3s;
+}
+
+.board-type-percent {
+    width: 36px;
+    text-align: right;
+    color: rgba(255, 255, 255, 0.8);
+}
+
 /* Stats */
 .stats-row {
     display: flex;
