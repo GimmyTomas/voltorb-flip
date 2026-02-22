@@ -81,12 +81,12 @@ export function panelsDontExceedConstraints(board) {
     for (let i = 0; i < BOARD_SIZE; i++) {
         let sum = 0;
         let voltorbs = 0;
-        let hasUnknown = false;
+        let unknownCount = 0;
 
         for (let j = 0; j < BOARD_SIZE; j++) {
             const v = board.get(i, j);
             if (v === PanelValue.Unknown) {
-                hasUnknown = true;
+                unknownCount++;
             } else if (v === PanelValue.Voltorb) {
                 voltorbs++;
             } else {
@@ -96,9 +96,20 @@ export function panelsDontExceedConstraints(board) {
 
         if (sum > rowHints[i].sum) return false;
         if (voltorbs > rowHints[i].voltorbCount) return false;
-        if (!hasUnknown) {
+
+        if (unknownCount === 0) {
             if (sum !== rowHints[i].sum) return false;
             if (voltorbs !== rowHints[i].voltorbCount) return false;
+        } else {
+            // Check if remaining constraints are achievable
+            const remainingSum = rowHints[i].sum - sum;
+            const remainingVoltorbs = rowHints[i].voltorbCount - voltorbs;
+            const remainingNonVoltorbs = unknownCount - remainingVoltorbs;
+
+            // Each non-voltorb contributes at least 1, at most 3
+            if (remainingNonVoltorbs < 0) return false; // More voltorbs needed than unknowns
+            if (remainingSum < remainingNonVoltorbs) return false; // Can't achieve sum (need at least 1 per non-voltorb)
+            if (remainingSum > remainingNonVoltorbs * 3) return false; // Can't achieve sum (max 3 per non-voltorb)
         }
     }
 
@@ -106,12 +117,12 @@ export function panelsDontExceedConstraints(board) {
     for (let j = 0; j < BOARD_SIZE; j++) {
         let sum = 0;
         let voltorbs = 0;
-        let hasUnknown = false;
+        let unknownCount = 0;
 
         for (let i = 0; i < BOARD_SIZE; i++) {
             const v = board.get(i, j);
             if (v === PanelValue.Unknown) {
-                hasUnknown = true;
+                unknownCount++;
             } else if (v === PanelValue.Voltorb) {
                 voltorbs++;
             } else {
@@ -121,9 +132,20 @@ export function panelsDontExceedConstraints(board) {
 
         if (sum > colHints[j].sum) return false;
         if (voltorbs > colHints[j].voltorbCount) return false;
-        if (!hasUnknown) {
+
+        if (unknownCount === 0) {
             if (sum !== colHints[j].sum) return false;
             if (voltorbs !== colHints[j].voltorbCount) return false;
+        } else {
+            // Check if remaining constraints are achievable
+            const remainingSum = colHints[j].sum - sum;
+            const remainingVoltorbs = colHints[j].voltorbCount - voltorbs;
+            const remainingNonVoltorbs = unknownCount - remainingVoltorbs;
+
+            // Each non-voltorb contributes at least 1, at most 3
+            if (remainingNonVoltorbs < 0) return false;
+            if (remainingSum < remainingNonVoltorbs) return false;
+            if (remainingSum > remainingNonVoltorbs * 3) return false;
         }
     }
 
@@ -337,6 +359,12 @@ function isBoardCompatibleWithType(board, level, type) {
 export function generateCompatibleBoards(board, maxBoards = 10000) {
     const level = board.level;
     const compatibleBoards = [];
+
+    // Early exit: check if the current revealed state is even possible
+    if (!panelsDontExceedConstraints(board)) {
+        return compatibleBoards; // Empty - impossible state
+    }
+
     const { totalVoltorbs, totalSum } = board.getTotals();
 
     // Find compatible types
