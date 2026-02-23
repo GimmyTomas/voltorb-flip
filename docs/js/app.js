@@ -116,27 +116,27 @@ class App {
             this.setMode(mode);
         };
 
-        // New game (self-play)
-        this.ui.onNewGame = () => {
-            this.newGame();
-        };
-
-        // New game (assistant mode)
+        // New game (works in both modes)
         this.ui.onNewGameAssistant = () => {
-            const level = parseInt(this.ui.levelSelect.value);
-            this.solutionBoard = this.generator.generate(level);
-            this.board = this.solutionBoard.toCovered();
-            this.board.level = level;
+            if (this.mode === 'selfplay') {
+                this.newGame();
+            } else {
+                // Assistant mode - generate random board with hints
+                const level = parseInt(this.ui.levelSelect.value);
+                this.solutionBoard = this.generator.generate(level);
+                this.board = this.solutionBoard.toCovered();
+                this.board.level = level;
 
-            // Copy hints from solution
-            for (let i = 0; i < BOARD_SIZE; i++) {
-                this.board.setRowHint(i, this.solutionBoard.rowHint(i));
-                this.board.setColHint(i, this.solutionBoard.colHint(i));
+                // Copy hints from solution
+                for (let i = 0; i < BOARD_SIZE; i++) {
+                    this.board.setRowHint(i, this.solutionBoard.rowHint(i));
+                    this.board.setColHint(i, this.solutionBoard.colHint(i));
+                }
+
+                this.history = [];
+                this.solverResult = null;
+                this.updateDisplay();
             }
-
-            this.history = [];
-            this.solverResult = null;
-            this.updateDisplay();
         };
 
         // Play/Pause (self-play)

@@ -30,7 +30,6 @@ export class UI {
 
         // Self-play controls
         this.selfPlayControls = document.querySelector('.selfplay-controls');
-        this.newGameBtn = document.getElementById('newGameBtn');
         this.selfPlayBtn = document.getElementById('selfPlayBtn');
         this.speedSlider = document.getElementById('speedSlider');
 
@@ -58,7 +57,6 @@ export class UI {
         this.onUndo = null;
         this.onReset = null;
         this.onModeChange = null;
-        this.onNewGame = null;
         this.onNewGameAssistant = null;
         this.onPlayPause = null;
         this.onSpeedChange = null;
@@ -135,12 +133,7 @@ export class UI {
             if (this.onModeChange) this.onModeChange('selfplay');
         });
 
-        // Self-play controls
-        this.newGameBtn.addEventListener('click', () => {
-            if (this.onNewGame) this.onNewGame();
-        });
-
-        // New Game button for assistant mode
+        // New Game button (works in both modes)
         this.newGameAssistantBtn.addEventListener('click', () => {
             if (this.onNewGameAssistant) this.onNewGameAssistant();
         });
@@ -527,12 +520,10 @@ export class UI {
             this.assistantModeBtn.classList.add('active');
             this.playModeBtn.classList.remove('active');
             this.selfPlayControls.style.display = 'none';
-            this.newGameAssistantBtn.style.display = 'block';
         } else {
             this.assistantModeBtn.classList.remove('active');
             this.playModeBtn.classList.add('active');
             this.selfPlayControls.style.display = 'block';
-            this.newGameAssistantBtn.style.display = 'none';
         }
     }
 
