@@ -362,17 +362,14 @@ main {
     display: flex;
     gap: 6px;
     margin-bottom: 10px;
-    align-items: stretch;
 }
 
-.solve-buttons .solver-btn {
+.solve-buttons .control-btn {
     flex: 1;
-}
-
-.solver-btn {
     width: auto;
-    padding: 8px 20px;
+    padding: 8px 12px;
     margin-bottom: 0;
+    box-sizing: border-box;
 }
 
 .control-btn.solver-btn.active {
