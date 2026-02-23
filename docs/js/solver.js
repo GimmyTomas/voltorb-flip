@@ -387,6 +387,7 @@ export function generateCompatibleBoards(board, maxBoards = 10000) {
             if (compatibleBoards.length >= maxBoards) break;
 
             for (const filled of fillNonVoltorbs(board, voltorbs, type, maxBoards - compatibleBoards.length)) {
+                filled.generatedType = type;
                 compatibleBoards.push(filled);
                 if (compatibleBoards.length >= maxBoards) break;
             }
@@ -404,24 +405,8 @@ export function groupBoardsByType(boards, level) {
     }
 
     for (const board of boards) {
-        // Count values to determine type
-        let count0 = 0, count2 = 0, count3 = 0;
-        for (let i = 0; i < BOARD_SIZE; i++) {
-            for (let j = 0; j < BOARD_SIZE; j++) {
-                const v = board.get(i, j);
-                if (v === PanelValue.Voltorb) count0++;
-                else if (v === PanelValue.Two) count2++;
-                else if (v === PanelValue.Three) count3++;
-            }
-        }
-
-        // Find matching type
-        for (let type = 0; type < NUM_TYPES_PER_LEVEL; type++) {
-            const params = getParams(level, type);
-            if (params.n0 === count0 && params.n2 === count2 && params.n3 === count3) {
-                groups[type].push(board);
-                break;
-            }
+        if (board.generatedType !== undefined) {
+            groups[board.generatedType].push(board);
         }
     }
 
