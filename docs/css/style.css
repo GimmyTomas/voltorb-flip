@@ -362,6 +362,11 @@ main {
     display: flex;
     gap: 6px;
     margin-bottom: 10px;
+    align-items: stretch;
+}
+
+.solve-buttons .solver-btn {
+    flex: 1;
 }
 
 .solver-btn {
