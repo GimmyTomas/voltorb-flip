@@ -21,6 +21,7 @@ export class UI {
         this.winProbFill = document.getElementById('winProbFill');
         this.suggestionValue = document.getElementById('suggestionValue');
         this.solveBtn = document.getElementById('solveBtn');
+        this.autoSolveBtn = document.getElementById('autoSolveBtn');
         this.undoBtn = document.getElementById('undoBtn');
         this.resetBtn = document.getElementById('resetBtn');
 
@@ -54,6 +55,7 @@ export class UI {
         this.onHintEdit = null;
         this.onLevelChange = null;
         this.onSolve = null;
+        this.onAutoSolveToggle = null;
         this.onUndo = null;
         this.onReset = null;
         this.onModeChange = null;
@@ -114,6 +116,10 @@ export class UI {
         // Control buttons
         this.solveBtn.addEventListener('click', () => {
             if (this.onSolve) this.onSolve();
+        });
+
+        this.autoSolveBtn.addEventListener('click', () => {
+            if (this.onAutoSolveToggle) this.onAutoSolveToggle();
         });
 
         this.undoBtn.addEventListener('click', () => {
@@ -555,6 +561,12 @@ export class UI {
     // Enable/disable undo button
     setUndoEnabled(enabled) {
         this.undoBtn.disabled = !enabled;
+    }
+
+    // Set auto-solve mode
+    setAutoSolve(enabled) {
+        this.autoSolveBtn.classList.toggle('active', enabled);
+        this.solveBtn.disabled = enabled;
     }
 
     // Animate tile reveal

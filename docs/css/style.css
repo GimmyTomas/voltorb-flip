@@ -358,10 +358,21 @@ main {
     min-width: 180px;
 }
 
+.solve-buttons {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
 .solver-btn {
     width: auto;
     padding: 8px 20px;
     margin-bottom: 0;
+}
+
+.solver-btn.active {
+    background: var(--hint-orange);
+    border-color: var(--hint-orange-dark);
 }
 
 /* Probability Toggle */

@@ -20,6 +20,7 @@ class App {
 
         // Solver results
         this.solverResult = null;
+        this.autoSolve = false;
 
         // Self-play state
         this.isPlaying = false;
@@ -55,7 +56,11 @@ class App {
         this.ui.onTileValueSelect = (row, col, value) => {
             this.saveHistory();
             this.board.set(row, col, value);
-            this.updateDisplay();
+            if (this.autoSolve) {
+                this.runSolver();
+            } else {
+                this.updateDisplay();
+            }
 
             // Check game state
             const result = this.board.checkGameResult();
@@ -81,7 +86,11 @@ class App {
             } else {
                 this.board.setColHint(index, { sum, voltorbCount: voltorbs });
             }
-            this.updateDisplay();
+            if (this.autoSolve) {
+                this.runSolver();
+            } else {
+                this.updateDisplay();
+            }
         };
 
         // Level change
@@ -90,13 +99,26 @@ class App {
             if (this.mode === 'selfplay') {
                 this.newGame();
             } else {
-                this.updateDisplay();
+                if (this.autoSolve) {
+                    this.runSolver();
+                } else {
+                    this.updateDisplay();
+                }
             }
         };
 
         // Solve button
         this.ui.onSolve = () => {
             this.runSolver();
+        };
+
+        // Auto-solve toggle
+        this.ui.onAutoSolveToggle = () => {
+            this.autoSolve = !this.autoSolve;
+            this.ui.setAutoSolve(this.autoSolve);
+            if (this.autoSolve) {
+                this.runSolver();
+            }
         };
 
         // Undo
@@ -135,7 +157,11 @@ class App {
 
                 this.history = [];
                 this.solverResult = null;
-                this.updateDisplay();
+                if (this.autoSolve) {
+                    this.runSolver();
+                } else {
+                    this.updateDisplay();
+                }
             }
         };
 
@@ -175,7 +201,11 @@ class App {
 
         this.history = [];
         this.solverResult = null;
-        this.updateDisplay();
+        if (this.autoSolve) {
+            this.runSolver();
+        } else {
+            this.updateDisplay();
+        }
     }
 
     // Set mode
@@ -208,7 +238,11 @@ class App {
 
         this.history = [];
         this.solverResult = null;
-        this.updateDisplay();
+        if (this.autoSolve) {
+            this.runSolver();
+        } else {
+            this.updateDisplay();
+        }
     }
 
     // Reveal a tile (self-play mode)
@@ -307,7 +341,11 @@ class App {
         const state = this.history.pop();
         this.board = state.board;
         this.solverResult = state.solverResult;
-        this.updateDisplay();
+        if (this.autoSolve) {
+            this.runSolver();
+        } else {
+            this.updateDisplay();
+        }
     }
 
     // Reset board
@@ -327,11 +365,15 @@ class App {
                     this.board.setColHint(i, this.solutionBoard.colHint(i));
                 }
             }
-        }
 
-        this.history = [];
-        this.solverResult = null;
-        this.updateDisplay();
+            this.history = [];
+            this.solverResult = null;
+            if (this.autoSolve) {
+                this.runSolver();
+            } else {
+                this.updateDisplay();
+            }
+        }
     }
 
     // Start auto-play
