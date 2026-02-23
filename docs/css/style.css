@@ -370,7 +370,7 @@ main {
     margin-bottom: 0;
 }
 
-.solver-btn.active {
+.control-btn.solver-btn.active {
     background: var(--hint-orange);
     border-color: var(--hint-orange-dark);
 }
