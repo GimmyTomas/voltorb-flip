@@ -34,6 +34,9 @@ export class UI {
         this.selfPlayBtn = document.getElementById('selfPlayBtn');
         this.speedSlider = document.getElementById('speedSlider');
 
+        // New Game button for assistant mode
+        this.newGameAssistantBtn = document.getElementById('newGameAssistantBtn');
+
         // Probability toggle
         this.probDetailedBtn = document.getElementById('probDetailedBtn');
         this.probVoltorbBtn = document.getElementById('probVoltorbBtn');
@@ -56,6 +59,7 @@ export class UI {
         this.onReset = null;
         this.onModeChange = null;
         this.onNewGame = null;
+        this.onNewGameAssistant = null;
         this.onPlayPause = null;
         this.onSpeedChange = null;
         this.onProbDisplayModeChange = null;
@@ -134,6 +138,11 @@ export class UI {
         // Self-play controls
         this.newGameBtn.addEventListener('click', () => {
             if (this.onNewGame) this.onNewGame();
+        });
+
+        // New Game button for assistant mode
+        this.newGameAssistantBtn.addEventListener('click', () => {
+            if (this.onNewGameAssistant) this.onNewGameAssistant();
         });
 
         this.selfPlayBtn.addEventListener('click', () => {
@@ -269,10 +278,33 @@ export class UI {
                         }
                     }
 
-                    // Check if this is a safe panel
+                    // Add safety bar for safe panels in detailed mode (like voltorb mode)
+                    if (this.probDisplayMode === 'detailed' && prob && prob.pVoltorb === 0) {
+                        const overlay = document.createElement('div');
+                        overlay.className = 'prob-overlay';
+                        const bar = document.createElement('div');
+                        bar.className = 'prob-bar safe';
+                        bar.style.width = '100%';
+                        overlay.appendChild(bar);
+                        tile.appendChild(overlay);
+                    }
+
+                    // Check if this is a safe panel and suggested panel
                     const isSafe = safePanels.some(p => p.row === i && p.col === j);
-                    if (isSafe) {
-                        tile.style.boxShadow = '0 0 0 3px var(--safe-color) inset';
+                    const isSuggested = suggestedPanel && suggestedPanel.row === i && suggestedPanel.col === j;
+
+                    // Apply combined box-shadow based on both states
+                    if (isSafe && this.probDisplayMode !== 'none') {
+                        if (isSuggested) {
+                            // Both safe and suggested: combine shadows
+                            tile.style.boxShadow = '0 0 0 4px var(--suggestion-color), 0 0 15px var(--suggestion-color), 0 0 0 3px var(--safe-color) inset';
+                        } else {
+                            // Only safe
+                            tile.style.boxShadow = '0 0 0 3px var(--safe-color) inset';
+                        }
+                    } else if (isSuggested) {
+                        // Only suggested (handled by CSS class)
+                        tile.classList.add('suggested');
                     }
                 } else if (value === PanelValue.Voltorb) {
                     tile.classList.add('voltorb');
@@ -280,11 +312,6 @@ export class UI {
                     tile.classList.add('revealed');
                     tile.classList.add(['', 'one', 'two', 'three'][value]);
                     tile.textContent = value;
-                }
-
-                // Check if this is the suggested panel
-                if (suggestedPanel && suggestedPanel.row === i && suggestedPanel.col === j) {
-                    tile.classList.add('suggested');
                 }
 
                 // Add click handler
