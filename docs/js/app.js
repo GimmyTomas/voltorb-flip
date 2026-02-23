@@ -254,7 +254,11 @@ class App {
         this.board.set(row, col, value);
 
         this.ui.animateTileReveal(row, col, () => {
-            this.updateDisplay();
+            if (this.autoSolve) {
+                this.runSolver();
+            } else {
+                this.updateDisplay();
+            }
 
             // Check game state
             const result = this.board.checkGameResult();
