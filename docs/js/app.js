@@ -12,8 +12,8 @@ class App {
         this.ui = new UI();
         this.generator = new BoardGenerator();
 
-        // Game state
-        this.board = new Board(8);
+        // Game state - default to level 1
+        this.board = new Board(1);
         this.solutionBoard = null; // Full solution in self-play mode
         this.history = [];
         this.mode = 'assistant'; // 'assistant' or 'selfplay'
@@ -135,6 +135,11 @@ class App {
                 this.pauseAutoPlay();
                 this.startAutoPlay();
             }
+        };
+
+        // Probability display mode change
+        this.ui.onProbDisplayModeChange = (mode) => {
+            this.updateDisplay();
         };
     }
 

@@ -661,7 +661,8 @@ export function solve(board, maxBoards = 10000) {
     // Determine suggested panel
     let suggestedPanel;
     if (safePanels.length > 0) {
-        // Prefer safe panel with highest multiplier probability
+        // Prefer safe panel with highest expected value
+        // E[V] = P(1)*1 + P(2)*2 + P(3)*3
         let bestSafe = safePanels[0];
         let bestScore = -1;
 
@@ -670,7 +671,7 @@ export function solve(board, maxBoards = 10000) {
                 p.pos.row === pos.row && p.pos.col === pos.col
             );
             if (panelProb) {
-                const score = panelProb.pTwo + panelProb.pThree * 2;
+                const score = panelProb.pOne * 1 + panelProb.pTwo * 2 + panelProb.pThree * 3;
                 if (score > bestScore) {
                     bestScore = score;
                     bestSafe = pos;

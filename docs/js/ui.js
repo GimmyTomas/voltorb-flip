@@ -26,13 +26,19 @@ export class UI {
 
         // Mode buttons
         this.assistantModeBtn = document.getElementById('assistantModeBtn');
-        this.selfPlayModeBtn = document.getElementById('selfPlayModeBtn');
+        this.playModeBtn = document.getElementById('playModeBtn');
 
         // Self-play controls
         this.selfPlayControls = document.querySelector('.selfplay-controls');
         this.newGameBtn = document.getElementById('newGameBtn');
-        this.playPauseBtn = document.getElementById('playPauseBtn');
+        this.selfPlayBtn = document.getElementById('selfPlayBtn');
         this.speedSlider = document.getElementById('speedSlider');
+
+        // Probability toggle
+        this.probDetailedBtn = document.getElementById('probDetailedBtn');
+        this.probVoltorbBtn = document.getElementById('probVoltorbBtn');
+        this.probNoneBtn = document.getElementById('probNoneBtn');
+        this.legendSection = document.getElementById('legendSection');
 
         // Stats
         this.gamesPlayed = document.getElementById('gamesPlayed');
@@ -52,10 +58,12 @@ export class UI {
         this.onNewGame = null;
         this.onPlayPause = null;
         this.onSpeedChange = null;
+        this.onProbDisplayModeChange = null;
 
         // State
         this.selectedTile = null;
         this.selectedHint = null;
+        this.probDisplayMode = 'voltorb'; // 'detailed', 'voltorb', 'none'
 
         this.setupEventListeners();
     }
@@ -119,7 +127,7 @@ export class UI {
             if (this.onModeChange) this.onModeChange('assistant');
         });
 
-        this.selfPlayModeBtn.addEventListener('click', () => {
+        this.playModeBtn.addEventListener('click', () => {
             if (this.onModeChange) this.onModeChange('selfplay');
         });
 
@@ -128,12 +136,25 @@ export class UI {
             if (this.onNewGame) this.onNewGame();
         });
 
-        this.playPauseBtn.addEventListener('click', () => {
+        this.selfPlayBtn.addEventListener('click', () => {
             if (this.onPlayPause) this.onPlayPause();
         });
 
         this.speedSlider.addEventListener('input', () => {
             if (this.onSpeedChange) this.onSpeedChange(parseInt(this.speedSlider.value));
+        });
+
+        // Probability display toggle
+        this.probDetailedBtn.addEventListener('click', () => {
+            this.setProbDisplayMode('detailed');
+        });
+
+        this.probVoltorbBtn.addEventListener('click', () => {
+            this.setProbDisplayMode('voltorb');
+        });
+
+        this.probNoneBtn.addEventListener('click', () => {
+            this.setProbDisplayMode('none');
         });
 
         // Click outside modal to close
@@ -184,36 +205,68 @@ export class UI {
                         p.pos.row === i && p.pos.col === j
                     );
 
-                    if (prob) {
-                        // Add probability overlay
-                        const overlay = document.createElement('div');
-                        overlay.className = 'prob-overlay';
+                    if (prob && this.probDisplayMode !== 'none') {
+                        if (this.probDisplayMode === 'detailed') {
+                            // Detailed mode: show all four percentages
+                            const detailed = document.createElement('div');
+                            detailed.className = 'prob-detailed';
 
-                        const bar = document.createElement('div');
-                        bar.className = 'prob-bar';
+                            const values = [
+                                { label: '0:', value: prob.pVoltorb, isVoltorb: true },
+                                { label: '1:', value: prob.pOne, isVoltorb: false },
+                                { label: '2:', value: prob.pTwo, isVoltorb: false },
+                                { label: '3:', value: prob.pThree, isVoltorb: false }
+                            ];
 
-                        const safePercent = (1 - prob.pVoltorb) * 100;
-                        bar.style.width = `${safePercent}%`;
+                            for (const v of values) {
+                                const row = document.createElement('div');
+                                row.className = 'prob-row' + (v.isVoltorb ? ' voltorb' : '');
 
-                        // Color based on voltorb probability
-                        if (prob.pVoltorb === 0) {
-                            bar.classList.add('safe');
-                        } else if (prob.pVoltorb < 0.25) {
-                            bar.classList.add('low-risk');
-                        } else if (prob.pVoltorb < 0.5) {
-                            bar.classList.add('medium-risk');
-                        } else {
-                            bar.classList.add('high-risk');
+                                const label = document.createElement('span');
+                                label.className = 'prob-label';
+                                label.textContent = v.label;
+
+                                const val = document.createElement('span');
+                                val.className = 'prob-value';
+                                val.textContent = `${Math.round(v.value * 100)}%`;
+
+                                row.appendChild(label);
+                                row.appendChild(val);
+                                detailed.appendChild(row);
+                            }
+
+                            tile.appendChild(detailed);
+                        } else if (this.probDisplayMode === 'voltorb') {
+                            // Voltorb mode: show colored safety bar
+                            const overlay = document.createElement('div');
+                            overlay.className = 'prob-overlay';
+
+                            const bar = document.createElement('div');
+                            bar.className = 'prob-bar';
+
+                            const safePercent = (1 - prob.pVoltorb) * 100;
+                            bar.style.width = `${safePercent}%`;
+
+                            // Color based on voltorb probability
+                            if (prob.pVoltorb === 0) {
+                                bar.classList.add('safe');
+                            } else if (prob.pVoltorb < 0.25) {
+                                bar.classList.add('low-risk');
+                            } else if (prob.pVoltorb < 0.5) {
+                                bar.classList.add('medium-risk');
+                            } else {
+                                bar.classList.add('high-risk');
+                            }
+
+                            overlay.appendChild(bar);
+                            tile.appendChild(overlay);
+
+                            // Add probability text on hover
+                            const probText = document.createElement('div');
+                            probText.className = 'prob-text';
+                            probText.textContent = `${Math.round(prob.pVoltorb * 100)}%`;
+                            tile.appendChild(probText);
                         }
-
-                        overlay.appendChild(bar);
-                        tile.appendChild(overlay);
-
-                        // Add probability text on hover
-                        const probText = document.createElement('div');
-                        probText.className = 'prob-text';
-                        probText.textContent = `${Math.round(prob.pVoltorb * 100)}%`;
-                        tile.appendChild(probText);
                     }
 
                     // Check if this is a safe panel
@@ -445,18 +498,38 @@ export class UI {
     setMode(mode) {
         if (mode === 'assistant') {
             this.assistantModeBtn.classList.add('active');
-            this.selfPlayModeBtn.classList.remove('active');
+            this.playModeBtn.classList.remove('active');
             this.selfPlayControls.style.display = 'none';
         } else {
             this.assistantModeBtn.classList.remove('active');
-            this.selfPlayModeBtn.classList.add('active');
+            this.playModeBtn.classList.add('active');
             this.selfPlayControls.style.display = 'block';
         }
     }
 
-    // Set play/pause button state
+    // Set play/pause button state (Self-Play button)
     setPlaying(isPlaying) {
-        this.playPauseBtn.textContent = isPlaying ? 'Pause' : 'Play';
+        this.selfPlayBtn.textContent = isPlaying ? 'Pause' : 'Self-Play';
+    }
+
+    // Set probability display mode
+    setProbDisplayMode(mode) {
+        this.probDisplayMode = mode;
+
+        // Update button states
+        this.probDetailedBtn.classList.toggle('active', mode === 'detailed');
+        this.probVoltorbBtn.classList.toggle('active', mode === 'voltorb');
+        this.probNoneBtn.classList.toggle('active', mode === 'none');
+
+        // Show/hide legend based on mode
+        if (this.legendSection) {
+            this.legendSection.classList.toggle('hidden', mode !== 'voltorb');
+        }
+
+        // Trigger callback to re-render
+        if (this.onProbDisplayModeChange) {
+            this.onProbDisplayModeChange(mode);
+        }
     }
 
     // Enable/disable undo button

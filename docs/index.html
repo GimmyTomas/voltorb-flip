@@ -12,7 +12,7 @@
             <h1>Voltorb Flip</h1>
             <div class="mode-toggle">
                 <button id="assistantModeBtn" class="mode-btn active">Assistant</button>
-                <button id="selfPlayModeBtn" class="mode-btn">Self-Play</button>
+                <button id="playModeBtn" class="mode-btn">Play</button>
             </div>
         </header>
 
@@ -43,53 +43,25 @@
                     <div class="panel-section level-section">
                         <label for="levelSelect">Level:</label>
                         <select id="levelSelect">
-                            <option value="1">Level 1</option>
+                            <option value="1" selected>Level 1</option>
                             <option value="2">Level 2</option>
                             <option value="3">Level 3</option>
                             <option value="4">Level 4</option>
                             <option value="5">Level 5</option>
                             <option value="6">Level 6</option>
                             <option value="7">Level 7</option>
-                            <option value="8" selected>Level 8</option>
+                            <option value="8">Level 8</option>
                         </select>
                     </div>
 
-                    <div class="panel-section win-prob-section">
-                        <div class="win-prob-label">Win Probability</div>
-                        <div class="win-prob-value" id="winProbValue">--</div>
-                        <div class="win-prob-bar">
-                            <div class="win-prob-fill" id="winProbFill"></div>
-                        </div>
-                    </div>
-
-                    <div class="panel-section suggestion-section">
-                        <div class="suggestion-label">Suggested Move</div>
-                        <div class="suggestion-value" id="suggestionValue">--</div>
-                    </div>
-
-                    <div class="panel-section solver-info-section">
-                        <div class="solver-info-label">Solver Info</div>
-                        <div class="solver-info-row">
-                            <span>Compatible Boards:</span>
-                            <span id="compatibleCount">--</span>
-                        </div>
-                        <div class="board-types-container">
-                            <div class="board-types-label">Board Type Probabilities</div>
-                            <div class="board-types-list" id="boardTypesList">
-                                <!-- Board type probabilities will be populated by JS -->
-                            </div>
-                        </div>
-                    </div>
-
                     <div class="panel-section controls-section">
-                        <button id="solveBtn" class="control-btn">Solve</button>
                         <button id="undoBtn" class="control-btn" disabled>Undo</button>
                         <button id="resetBtn" class="control-btn">Reset</button>
                     </div>
 
                     <div class="panel-section selfplay-controls" style="display: none;">
                         <button id="newGameBtn" class="control-btn">New Game</button>
-                        <button id="playPauseBtn" class="control-btn">Play</button>
+                        <button id="selfPlayBtn" class="control-btn">Self-Play</button>
                         <div class="speed-control">
                             <label for="speedSlider">Speed:</label>
                             <input type="range" id="speedSlider" min="1" max="10" value="5">
@@ -111,8 +83,49 @@
                             <span id="winRate">--</span>
                         </div>
                     </div>
+                </div>
+            </div>
 
-                    <div class="panel-section legend-section">
+            <!-- Solver Panel (below board) -->
+            <div class="solver-panel">
+                <div class="solver-panel-left">
+                    <button id="solveBtn" class="control-btn solver-btn">Solve</button>
+
+                    <div class="win-prob-section">
+                        <div class="win-prob-label">Win Probability</div>
+                        <div class="win-prob-value" id="winProbValue">--</div>
+                        <div class="win-prob-bar">
+                            <div class="win-prob-fill" id="winProbFill"></div>
+                        </div>
+                    </div>
+
+                    <div class="suggestion-section">
+                        <div class="suggestion-label">Suggested Move</div>
+                        <div class="suggestion-value" id="suggestionValue">--</div>
+                    </div>
+                </div>
+
+                <div class="solver-panel-center">
+                    <div class="solver-info-row">
+                        <span>Compatible Boards:</span>
+                        <span id="compatibleCount">--</span>
+                    </div>
+                    <div class="board-types-container">
+                        <div class="board-types-label">Board Type Probabilities</div>
+                        <div class="board-types-list" id="boardTypesList">
+                            <!-- Board type probabilities will be populated by JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="solver-panel-right">
+                    <div class="prob-toggle">
+                        <span class="prob-toggle-label">Display:</span>
+                        <button id="probDetailedBtn" class="prob-toggle-btn">Detailed</button>
+                        <button id="probVoltorbBtn" class="prob-toggle-btn active">Voltorb</button>
+                        <button id="probNoneBtn" class="prob-toggle-btn">None</button>
+                    </div>
+                    <div class="legend-section" id="legendSection">
                         <div class="legend-title">Probability Legend</div>
                         <div class="legend-item">
                             <div class="legend-color safe"></div>
