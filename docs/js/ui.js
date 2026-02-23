@@ -527,10 +527,12 @@ export class UI {
             this.assistantModeBtn.classList.add('active');
             this.playModeBtn.classList.remove('active');
             this.selfPlayControls.style.display = 'none';
+            this.newGameAssistantBtn.style.display = 'block';
         } else {
             this.assistantModeBtn.classList.remove('active');
             this.playModeBtn.classList.add('active');
             this.selfPlayControls.style.display = 'block';
+            this.newGameAssistantBtn.style.display = 'none';
         }
     }
 
