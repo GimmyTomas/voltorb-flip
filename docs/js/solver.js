@@ -714,7 +714,21 @@ function depthLimitedSearch(state, depthLimit, memo, nodesRef, startTime, timeou
 
     // Win check
     if (isWon(state)) {
-        console.log(`[DEBUG] isWon=true at depth=${depthLimit}`);
+        const totalBoards = state.totalCompatible();
+        if (totalBoards <= 30) {
+            console.log(`[DEBUG] isWon=true at depth=${depthLimit}, totalBoards=${totalBoards}`);
+            // Log revealed panels
+            let revealed = [];
+            for (let i = 0; i < BOARD_SIZE; i++) {
+                for (let j = 0; j < BOARD_SIZE; j++) {
+                    const v = state.board.get(i, j);
+                    if (v !== PanelValue.Unknown) {
+                        revealed.push(`(${i},${j})=${v}`);
+                    }
+                }
+            }
+            console.log(`  Revealed: ${revealed.join(', ')}`);
+        }
         return { bestPanel: null, winProb: 1.0, fullyExplored: true };
     }
 
