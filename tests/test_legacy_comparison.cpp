@@ -329,9 +329,7 @@ TEST_CASE("Panel probabilities match legacy solver", "[legacy][probability]") {
             auto newCompatible = runNewSolver(covered);
             auto newProbs = ProbabilityCalculator::calculate(covered, newCompatible);
 
-            // Compare each unknown panel
-            // Note: The new and legacy solvers have slightly different probability
-            // calculations due to different board type weighting formulas. We use 0.1% tolerance.
+            // Compare each unknown panel - should match to machine precision
             for (int i = 0; i < 5; i++) {
                 for (int j = 0; j < 5; j++) {
                     if (covered.get(static_cast<uint8_t>(i), static_cast<uint8_t>(j)) ==
@@ -347,28 +345,26 @@ TEST_CASE("Panel probabilities match legacy solver", "[legacy][probability]") {
                         REQUIRE(newPanelProb != nullptr);
 
                         INFO("Panel (" << i << ", " << j << ")");
-                        // Probabilities match within 0.1% - minor differences due to
-                        // different board type weighting formulas between solvers
                         CHECK_THAT(newPanelProb->pVoltorb,
                                    WithinAbs(legacyProbs[static_cast<size_t>(i)]
                                                         [static_cast<size_t>(j)]
                                                             .p[0],
-                                             0.001));
+                                             1e-10));
                         CHECK_THAT(
                             newPanelProb->pOne,
                             WithinAbs(
                                 legacyProbs[static_cast<size_t>(i)][static_cast<size_t>(j)].p[1],
-                                0.001));
+                                1e-10));
                         CHECK_THAT(
                             newPanelProb->pTwo,
                             WithinAbs(
                                 legacyProbs[static_cast<size_t>(i)][static_cast<size_t>(j)].p[2],
-                                0.001));
+                                1e-10));
                         CHECK_THAT(
                             newPanelProb->pThree,
                             WithinAbs(
                                 legacyProbs[static_cast<size_t>(i)][static_cast<size_t>(j)].p[3],
-                                0.001));
+                                1e-10));
                     }
                 }
             }
@@ -411,7 +407,7 @@ TEST_CASE("Panel probabilities match legacy after partial reveal", "[legacy][pro
     auto newCompatible = runNewSolver(covered);
     auto newProbs = ProbabilityCalculator::calculate(covered, newCompatible);
 
-    // Compare each unknown panel (use 0.1% tolerance)
+    // Compare each unknown panel - should match to machine precision
     for (int i = 0; i < 5; i++) {
         for (int j = 0; j < 5; j++) {
             if (covered.get(static_cast<uint8_t>(i), static_cast<uint8_t>(j)) ==
@@ -427,24 +423,22 @@ TEST_CASE("Panel probabilities match legacy after partial reveal", "[legacy][pro
                 REQUIRE(newPanelProb != nullptr);
 
                 INFO("Panel (" << i << ", " << j << ")");
-                // Probabilities match within 0.1% - minor differences due to
-                // different board type weighting formulas between solvers
                 CHECK_THAT(
                     newPanelProb->pVoltorb,
                     WithinAbs(legacyProbs[static_cast<size_t>(i)][static_cast<size_t>(j)].p[0],
-                              0.001));
+                              1e-10));
                 CHECK_THAT(
                     newPanelProb->pOne,
                     WithinAbs(legacyProbs[static_cast<size_t>(i)][static_cast<size_t>(j)].p[1],
-                              0.001));
+                              1e-10));
                 CHECK_THAT(
                     newPanelProb->pTwo,
                     WithinAbs(legacyProbs[static_cast<size_t>(i)][static_cast<size_t>(j)].p[2],
-                              0.001));
+                              1e-10));
                 CHECK_THAT(
                     newPanelProb->pThree,
                     WithinAbs(legacyProbs[static_cast<size_t>(i)][static_cast<size_t>(j)].p[3],
-                              0.001));
+                              1e-10));
             }
         }
     }

@@ -1,6 +1,7 @@
 #include "voltorb/probability.hpp"
 
 #include "voltorb/board_type.hpp"
+#include "voltorb/constraints.hpp"
 
 namespace voltorb {
 
@@ -45,7 +46,10 @@ BoardProbabilities ProbabilityCalculator::calculate(const Board& board,
     // Group compatible boards by type
     std::array<std::vector<size_t>, NUM_TYPES_PER_LEVEL> indicesPerType;
 
-    // First, determine type of each compatible board by checking parameters
+    // Determine type(s) of each compatible board by checking parameters and legality.
+    // A board may be legal for multiple types with the same (n0, n2, n3) but different
+    // legality constraints (maxTotalFree, maxRowFree). For correct Bayesian inference,
+    // we must count each board in ALL types it's legal for.
     for (size_t idx = 0; idx < compatibleBoards.size(); idx++) {
         const Board& cb = compatibleBoards[idx];
 
@@ -60,12 +64,15 @@ BoardProbabilities ProbabilityCalculator::calculate(const Board& board,
             }
         }
 
-        // Find matching type
+        // Find ALL matching types - a board can be legal for multiple types
         for (BoardTypeIndex type = 0; type < NUM_TYPES_PER_LEVEL; type++) {
             const auto& params = BoardTypeData::params(level, type);
             if (params.n0 == count0 && params.n2 == count2 && params.n3 == count3) {
-                indicesPerType[type].push_back(idx);
-                break;
+                // Check legality constraints for this specific type
+                if (LegalityChecker::isLegal(cb, params)) {
+                    indicesPerType[type].push_back(idx);
+                    // NO break - continue checking other types with same (n0, n2, n3)
+                }
             }
         }
     }
