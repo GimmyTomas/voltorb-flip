@@ -801,13 +801,17 @@ export function* iterativeDeepening(board, compatibleBoards, options = {}) {
     const initialState = new SearchState(board, boardsByType, pBoardNorm);
 
     const startTime = Date.now();
-    let memo = new Map();
     let nodesRef = { count: 0 };
 
     // Check for free panel first
     const freePanel = findFreePanel(initialState);
 
     for (let depth = 1; depth <= maxDepth; depth++) {
+        // CRITICAL: Create fresh memo for each depth iteration.
+        // Reusing memo across depths causes child states to return cached results
+        // from shallower searches, effectively limiting all searches to depth 1.
+        const memo = new Map();
+
         const result = depthLimitedSearch(initialState, depth, memo, nodesRef, startTime, timeout);
 
         const elapsed = Date.now() - startTime;
