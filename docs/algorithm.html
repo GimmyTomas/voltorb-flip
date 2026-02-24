@@ -160,6 +160,19 @@ T2: 1,407,934,200 valid boards
                     Bayes' theorem to account for this.
                 </p>
 
+                <h3>Important: Board-to-Type Assignment</h3>
+                <p>
+                    Multiple board types can have the same (n<sub>0</sub>, n<sub>2</sub>, n<sub>3</sub>)
+                    but different legality constraints. For correct Bayesian inference, each compatible
+                    board must be counted in <strong>all</strong> types it is legal for, not just the first match.
+                </p>
+                <div class="note-box">
+                    <strong>Example:</strong> Level 2 has Type 0 and Type 5 both with (n<sub>0</sub>=7, n<sub>2</sub>=1, n<sub>3</sub>=3),
+                    but Type 0 has maxTotalFree=3 while Type 5 has maxTotalFree=2. A board satisfying the
+                    stricter Type 5 constraint is legal for <em>both</em> types and contributes to both
+                    types' probability mass.
+                </div>
+
                 <h3>Step 1: Calculate P(type | board)</h3>
                 <p>
                     For each board type, compute the probability it generated the current board:
@@ -173,26 +186,39 @@ T2: 1,407,934,200 valid boards
                     </div>
                 </div>
                 <p>
-                    Then normalize across all types:
+                    Then normalize across all types (using uniform prior P(type) = 1/10):
                 </p>
                 <div class="formula-box">
                     <div class="formula">
-                        P(type | board) = P(board | type) / &Sigma; P(board | type<sub>i</sub>)
+                        P(type | board) = P(board | type) / &Sigma;<sub>t</sub> P(board | type<sub>t</sub>)
                     </div>
                 </div>
 
-                <h3>Step 2: Calculate P(panel = value)</h3>
+                <h3>Step 2: Calculate P(panel = value | type, board)</h3>
                 <p>
-                    For each unknown panel and each possible value (0, 1, 2, 3):
+                    For each board type, count how many compatible boards have each value at this panel:
                 </p>
                 <div class="formula-box">
                     <div class="formula">
-                        P(value) = &Sigma;<sub>type</sub> P(value | type) &times; P(type | board)
+                        P(value | type, board) = count_with_value[type] / compatible_count[type]
+                    </div>
+                    <div class="formula-desc">
+                        Fraction of compatible boards of this type where the panel has this value
+                    </div>
+                </div>
+
+                <h3>Step 3: Calculate P(panel = value | board)</h3>
+                <p>
+                    Combine using the law of total probability:
+                </p>
+                <div class="formula-box">
+                    <div class="formula">
+                        P(value | board) = &Sigma;<sub>type</sub> P(value | type, board) &times; P(type | board)
                     </div>
                 </div>
                 <p>
-                    Where <code>P(value | type)</code> is the fraction of compatible boards of that
-                    type where this panel has this value.
+                    This marginalizes over the unknown board type, weighting each type's contribution
+                    by its posterior probability.
                 </p>
 
                 <h3>Worked Example</h3>
@@ -293,26 +319,25 @@ score = P(Voltorb) - 0.01 &times; (P(Two) + P(Three))
 
                 <h3>Legacy vs New Solver</h3>
                 <p>
-                    Two implementations exist: a legacy C++ solver and a new JavaScript solver.
-                    Compatible board counts match exactly, and probabilities match within 0.1%.
+                    Two implementations exist: a legacy C++ solver and a new C++/JavaScript solver.
+                    Both use the same Bayesian inference approach and produce <strong>identical results
+                    to machine precision</strong> (differences &lt; 10<sup>-10</sup>).
                 </p>
 
-                <h3>Source of Small Differences</h3>
+                <h3>Implementation Approach</h3>
                 <div class="note-box">
-                    <strong>Legacy approach:</strong> Calculates P(panel=value | board) directly
-                    using weighted counts across all compatible boards.
-                    <br><br>
-                    <strong>New approach:</strong> Uses two-stage Bayesian inference:
+                    Both solvers use two-stage Bayesian inference:
                     <ol>
-                        <li>First calculate P(type | board)</li>
-                        <li>Then calculate P(value | type, board)</li>
-                        <li>Finally combine: P(value) = &Sigma; P(value | type) &times; P(type | board)</li>
+                        <li>Calculate P(type | board) using compatible counts and N_accepted</li>
+                        <li>Calculate P(value | type, board) from compatible boards per type</li>
+                        <li>Combine: P(value | board) = &Sigma; P(value | type, board) &times; P(type | board)</li>
                     </ol>
+                    <br>
+                    <strong>Critical detail:</strong> Each compatible board is checked for legality against
+                    <em>all</em> types with matching (n<sub>0</sub>, n<sub>2</sub>, n<sub>3</sub>) and counted
+                    in every type it satisfies. This ensures correct probability weighting when multiple
+                    types share the same panel counts but have different legality constraints.
                 </div>
-                <p>
-                    Both approaches are mathematically valid. Small differences arise from
-                    numerical precision and different weighting schemes.
-                </p>
 
                 <h3>Performance Considerations</h3>
                 <ul>

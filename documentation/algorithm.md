@@ -37,19 +37,57 @@ P(type | E) = P(E | type) × P(type) / P(E)
             = [N_compatible(type) / N_accepted(type)] / Σ_t [N_compatible(t) / N_accepted(t)]
 ```
 
-## Panel Probability
+### Board-to-Type Assignment
 
-For any unknown panel position (i, j), the probability of each value:
+**Important**: Multiple board types can have the same (n0, n2, n3) but different legality
+constraints (maxTotalFree, maxRowFree). For correct Bayesian inference, each compatible
+board must be counted in **all** types it is legal for.
+
+Example: Level 2 has Type 0 and Type 5 both with (n0=7, n2=1, n3=3):
+- Type 0: maxTotalFree=3, maxRowFree=2, N_accepted=3,285,100,800
+- Type 5: maxTotalFree=2, maxRowFree=2, N_accepted=2,684,683,200
+
+A board satisfying the stricter Type 5 constraint is legal for *both* types and
+contributes to both types' probability mass. This is mathematically correct because
+when the game generates a board, the player doesn't know which type was selected.
+
+## Panel Probability Calculation
+
+For any unknown panel position (i, j), the probability of each value is computed in
+three steps:
+
+### Step 1: Type Posterior
 
 ```
-P(panel[i,j] = v | E) = Σ_type P(type | E) × P(panel[i,j] = v | type, E)
+P(type | E) = [N_compatible(type) / N_accepted(type)] / Σ_t [N_compatible(t) / N_accepted(t)]
 ```
 
-Where the conditional probability is estimated from compatible boards:
+### Step 2: Value Probability Given Type
+
+For each board type, count compatible boards with each panel value:
 
 ```
-P(panel[i,j] = v | type, E) = count(boards where panel[i,j] = v) / N_compatible(type)
+P(panel[i,j] = v | type, E) = count(boards of type where panel[i,j] = v) / N_compatible(type)
 ```
+
+### Step 3: Marginalize Over Types
+
+Apply the law of total probability:
+
+```
+P(panel[i,j] = v | E) = Σ_type P(panel[i,j] = v | type, E) × P(type | E)
+```
+
+This formula weights each type's value distribution by the probability that the
+board came from that type.
+
+### Implementation Note
+
+The legacy and new solvers produce identical results to machine precision (< 1e-10).
+Both implementations:
+1. Check each compatible board for legality against ALL types with matching (n0, n2, n3)
+2. Count the board in every type it satisfies (no early break)
+3. Use the same Bayesian formulas above
 
 ## Minimax Algorithm
 
