@@ -835,7 +835,8 @@ function depthLimitedSearch(state, depthLimit, memo, nodesRef, startTime, timeou
         let panelWinProb = 0;
         let panelFullyExplored = true;
 
-        console.log(`[DEBUG] Evaluating risky panel (${pos.row},${pos.col}) at depth=${depthLimit}`);
+        const shouldLogRisky = state.totalCompatible() <= 30;
+        if (shouldLogRisky) console.log(`[DEBUG] Evaluating risky panel (${pos.row},${pos.col}) at depth=${depthLimit}, totalBoards=${state.totalCompatible()}`);
         for (let value = 1; value <= 3; value++) {
             const pValue = probabilityOf(state, pos, value);
             if (pValue <= 0) continue;
@@ -843,12 +844,12 @@ function depthLimitedSearch(state, depthLimit, memo, nodesRef, startTime, timeou
             const nextState = revealPanel(state, pos, value);
             const child = depthLimitedSearch(nextState, depthLimit - 1, memo, nodesRef, startTime, timeout);
 
-            console.log(`  Risky (${pos.row},${pos.col}) val=${value}: P=${pValue.toFixed(3)}, W=${child.winProb.toFixed(3)}, exact=${child.fullyExplored}`);
+            if (shouldLogRisky) console.log(`  Risky (${pos.row},${pos.col}) val=${value}: P=${pValue.toFixed(3)}, W=${child.winProb.toFixed(3)}, exact=${child.fullyExplored}`);
 
             panelWinProb += pValue * child.winProb;
             if (!child.fullyExplored) panelFullyExplored = false;
         }
-        console.log(`  Risky panel total: winProb=${panelWinProb.toFixed(3)}, fullyExplored=${panelFullyExplored}`);
+        if (shouldLogRisky) console.log(`  Risky panel total: winProb=${panelWinProb.toFixed(3)}, fullyExplored=${panelFullyExplored}`);
 
         if (!panelFullyExplored) allFullyExplored = false;
 
