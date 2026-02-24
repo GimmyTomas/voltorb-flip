@@ -19,7 +19,7 @@ add_executable(test_solver test_solver.cpp)
 target_link_libraries(test_solver PRIVATE voltorb_lib Catch2::Catch2WithMain)
 
 add_executable(test_legacy_comparison test_legacy_comparison.cpp)
-target_link_libraries(test_legacy_comparison PRIVATE voltorb_lib Catch2::Catch2WithMain)
+target_link_libraries(test_legacy_comparison PRIVATE voltorb_lib legacy_solver_lib Catch2::Catch2WithMain)
 
 # Register tests with CTest
 include(Catch)

@@ -48,6 +48,27 @@ target_link_libraries(voltorb_assistant PRIVATE voltorb_lib)
 add_executable(voltorb_selfplay apps/selfplay/main.cpp)
 target_link_libraries(voltorb_selfplay PRIVATE voltorb_lib)
 
+# Legacy solver library
+add_library(legacy_solver_lib legacy/legacy_solver.cpp)
+target_include_directories(legacy_solver_lib PUBLIC legacy)
+
+# Legacy interactive app
+add_executable(legacy_solver legacy/main.cpp)
+target_link_libraries(legacy_solver PRIVATE legacy_solver_lib)
+
+# Debug investigation tools
+add_executable(investigate_diff debug/investigate_diff.cpp)
+target_link_libraries(investigate_diff PRIVATE voltorb_lib legacy_solver_lib)
+
+add_executable(investigate_level2 debug/investigate_level2.cpp)
+target_link_libraries(investigate_level2 PRIVATE voltorb_lib legacy_solver_lib)
+
+add_executable(trace_legacy debug/trace_legacy.cpp)
+target_link_libraries(trace_legacy PRIVATE voltorb_lib legacy_solver_lib)
+
+add_executable(trace_fill debug/trace_fill.cpp)
+target_link_libraries(trace_fill PRIVATE voltorb_lib legacy_solver_lib)
+
 # Testing
 option(VOLTORB_BUILD_TESTS "Build test suite" ON)
 if(VOLTORB_BUILD_TESTS)
