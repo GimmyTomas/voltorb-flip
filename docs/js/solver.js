@@ -734,8 +734,9 @@ function depthLimitedSearch(state, depthLimit, memo, nodesRef, startTime, timeou
     // Free panel check
     const freePanel = findFreePanel(state);
     if (freePanel) {
-        // Only log at high depths to avoid spam
-        const shouldLog = depthLimit >= 5 || state.totalCompatible() <= 30;
+        // Log at initial state (22 boards is the specific case we're debugging)
+        const isInitialState = state.totalCompatible() === 22;
+        const shouldLog = isInitialState || depthLimit >= 10;
         if (shouldLog) console.log(`[DEBUG] Free panel found: (${freePanel.row},${freePanel.col}) at depth=${depthLimit}, totalBoards=${state.totalCompatible()}`);
         let winProb = 0;
         let fullyExplored = true;
@@ -747,9 +748,10 @@ function depthLimitedSearch(state, depthLimit, memo, nodesRef, startTime, timeou
             if (pValue <= 0) continue;
 
             const nextState = revealPanel(state, freePanel, value);
+            const childBoardCount = nextState.totalCompatible();
             const child = depthLimitedSearch(nextState, depthLimit, memo, nodesRef, startTime, timeout);
 
-            if (shouldLog) console.log(`  Free (${freePanel.row},${freePanel.col}) val=${value}: P=${pValue.toFixed(4)}, W=${child.winProb.toFixed(4)}, exact=${child.fullyExplored}, contribution=${(pValue * child.winProb).toFixed(4)}`);
+            if (shouldLog) console.log(`  Free (${freePanel.row},${freePanel.col}) val=${value}: P=${pValue.toFixed(4)}, W=${child.winProb.toFixed(4)}, exact=${child.fullyExplored}, contribution=${(pValue * child.winProb).toFixed(4)}, childBoards=${childBoardCount}`);
 
             winProb += pValue * child.winProb;
             if (!child.fullyExplored) fullyExplored = false;
