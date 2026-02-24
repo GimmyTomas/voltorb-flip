@@ -330,8 +330,8 @@ TEST_CASE("Panel probabilities match legacy solver", "[legacy][probability]") {
             auto newProbs = ProbabilityCalculator::calculate(covered, newCompatible);
 
             // Compare each unknown panel
-            // Note: The new and legacy solvers may have slightly different probability
-            // calculations due to different Bayesian approaches. We use 1% tolerance.
+            // Note: The new and legacy solvers have slightly different probability
+            // calculations due to different board type weighting formulas. We use 0.1% tolerance.
             for (int i = 0; i < 5; i++) {
                 for (int j = 0; j < 5; j++) {
                     if (covered.get(static_cast<uint8_t>(i), static_cast<uint8_t>(j)) ==
@@ -411,7 +411,7 @@ TEST_CASE("Panel probabilities match legacy after partial reveal", "[legacy][pro
     auto newCompatible = runNewSolver(covered);
     auto newProbs = ProbabilityCalculator::calculate(covered, newCompatible);
 
-    // Compare each unknown panel (use 1% tolerance)
+    // Compare each unknown panel (use 0.1% tolerance)
     for (int i = 0; i < 5; i++) {
         for (int j = 0; j < 5; j++) {
             if (covered.get(static_cast<uint8_t>(i), static_cast<uint8_t>(j)) ==
