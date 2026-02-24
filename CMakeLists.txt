@@ -28,6 +28,8 @@ add_library(voltorb_lib
     src/sampler.cpp
     src/generator.cpp
     src/game.cpp
+    src/zobrist.cpp
+    src/transposition.cpp
 )
 
 target_include_directories(voltorb_lib PUBLIC

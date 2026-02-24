@@ -19,6 +19,7 @@ export class UI {
         this.levelSelect = document.getElementById('levelSelect');
         this.winProbValue = document.getElementById('winProbValue');
         this.winProbFill = document.getElementById('winProbFill');
+        this.solverStatus = document.getElementById('solverStatus');
         this.suggestionValue = document.getElementById('suggestionValue');
         this.solveBtn = document.getElementById('solveBtn');
         this.autoSolveBtn = document.getElementById('autoSolveBtn');
@@ -428,7 +429,7 @@ export class UI {
     }
 
     // Update win probability display
-    updateWinProbability(prob) {
+    updateWinProbability(prob, solverInfo = null) {
         if (prob === null || prob === undefined) {
             this.winProbValue.textContent = '--';
             this.winProbFill.style.width = '0%';
@@ -436,6 +437,22 @@ export class UI {
             const percent = Math.round(prob * 100);
             this.winProbValue.textContent = `${percent}%`;
             this.winProbFill.style.width = `${percent}%`;
+        }
+
+        // Update solver status
+        if (this.solverStatus) {
+            if (solverInfo) {
+                if (solverInfo.isExact) {
+                    this.solverStatus.textContent = 'Exact';
+                    this.solverStatus.className = 'solver-status exact';
+                } else {
+                    this.solverStatus.textContent = `Depth ${solverInfo.depth}`;
+                    this.solverStatus.className = 'solver-status approximate';
+                }
+            } else {
+                this.solverStatus.textContent = '--';
+                this.solverStatus.className = 'solver-status';
+            }
         }
     }
 

@@ -1,5 +1,5 @@
 // Solver Logic for Voltorb Flip
-// Ported from C++ src/solver.cpp, src/probability.cpp, src/constraints.cpp
+// Implements iterative deepening with memoization for optimal play
 
 import {
     BOARD_SIZE,
@@ -101,15 +101,13 @@ export function panelsDontExceedConstraints(board) {
             if (sum !== rowHints[i].sum) return false;
             if (voltorbs !== rowHints[i].voltorbCount) return false;
         } else {
-            // Check if remaining constraints are achievable
             const remainingSum = rowHints[i].sum - sum;
             const remainingVoltorbs = rowHints[i].voltorbCount - voltorbs;
             const remainingNonVoltorbs = unknownCount - remainingVoltorbs;
 
-            // Each non-voltorb contributes at least 1, at most 3
-            if (remainingNonVoltorbs < 0) return false; // More voltorbs needed than unknowns
-            if (remainingSum < remainingNonVoltorbs) return false; // Can't achieve sum (need at least 1 per non-voltorb)
-            if (remainingSum > remainingNonVoltorbs * 3) return false; // Can't achieve sum (max 3 per non-voltorb)
+            if (remainingNonVoltorbs < 0) return false;
+            if (remainingSum < remainingNonVoltorbs) return false;
+            if (remainingSum > remainingNonVoltorbs * 3) return false;
         }
     }
 
@@ -137,12 +135,10 @@ export function panelsDontExceedConstraints(board) {
             if (sum !== colHints[j].sum) return false;
             if (voltorbs !== colHints[j].voltorbCount) return false;
         } else {
-            // Check if remaining constraints are achievable
             const remainingSum = colHints[j].sum - sum;
             const remainingVoltorbs = colHints[j].voltorbCount - voltorbs;
             const remainingNonVoltorbs = unknownCount - remainingVoltorbs;
 
-            // Each non-voltorb contributes at least 1, at most 3
             if (remainingNonVoltorbs < 0) return false;
             if (remainingSum < remainingNonVoltorbs) return false;
             if (remainingSum > remainingNonVoltorbs * 3) return false;
@@ -168,19 +164,16 @@ function* combinations(positions, k) {
 }
 
 // Generate all valid voltorb position configurations
-function* generateVoltorbPositions(board, callback) {
+function* generateVoltorbPositions(board) {
     const rowHints = board.rowHints;
     const colHints = board.colHints;
 
-    // Recursive generator
     function* generateRow(row, colCounts, current) {
         if (row === BOARD_SIZE) {
-            // Verify column counts match exactly
             for (let j = 0; j < BOARD_SIZE; j++) {
                 if (colCounts[j] !== colHints[j].voltorbCount) return;
             }
 
-            // Check conflicts with revealed panels
             for (let i = 0; i < BOARD_SIZE; i++) {
                 for (let j = 0; j < BOARD_SIZE; j++) {
                     const revealed = board.get(i, j);
@@ -199,9 +192,7 @@ function* generateVoltorbPositions(board, callback) {
         const voltorbsNeeded = rowHints[row].voltorbCount;
         const rowPositions = [0, 1, 2, 3, 4];
 
-        // Generate all combinations of voltorbsNeeded positions in this row
         for (const combo of combinations(rowPositions, voltorbsNeeded)) {
-            // Set voltorb positions for this row
             const newColCounts = [...colCounts];
             const newCurrent = current.map(r => [...r]);
             newCurrent[row] = [false, false, false, false, false];
@@ -211,14 +202,12 @@ function* generateVoltorbPositions(board, callback) {
                 newColCounts[j]++;
             }
 
-            // Check column constraints so far
             let valid = true;
             for (let j = 0; j < BOARD_SIZE; j++) {
                 if (newColCounts[j] > colHints[j].voltorbCount) {
                     valid = false;
                     break;
                 }
-                // Can we still fit remaining voltorbs?
                 const remainingRows = BOARD_SIZE - 1 - row;
                 if (newColCounts[j] + remainingRows < colHints[j].voltorbCount) {
                     valid = false;
@@ -245,7 +234,6 @@ function* fillNonVoltorbs(board, voltorbPositions, type, maxBoards = 10000) {
     const level = board.level;
     const params = getParams(level, type);
 
-    // Create template board with voltorbs
     const template = new Board(level);
     for (let i = 0; i < BOARD_SIZE; i++) {
         template.setRowHint(i, board.rowHint(i));
@@ -259,7 +247,6 @@ function* fillNonVoltorbs(board, voltorbPositions, type, maxBoards = 10000) {
         }
     }
 
-    // Copy revealed panels
     for (let i = 0; i < BOARD_SIZE; i++) {
         for (let j = 0; j < BOARD_SIZE; j++) {
             const revealed = board.get(i, j);
@@ -269,7 +256,6 @@ function* fillNonVoltorbs(board, voltorbPositions, type, maxBoards = 10000) {
         }
     }
 
-    // Count already placed 2s and 3s
     let placed2s = 0, placed3s = 0;
     for (let i = 0; i < BOARD_SIZE; i++) {
         for (let j = 0; j < BOARD_SIZE; j++) {
@@ -284,7 +270,6 @@ function* fillNonVoltorbs(board, voltorbPositions, type, maxBoards = 10000) {
 
     if (remaining2s < 0 || remaining3s < 0) return;
 
-    // Find unknown (non-voltorb) positions
     const unknownPositions = [];
     for (let i = 0; i < BOARD_SIZE; i++) {
         for (let j = 0; j < BOARD_SIZE; j++) {
@@ -296,12 +281,10 @@ function* fillNonVoltorbs(board, voltorbPositions, type, maxBoards = 10000) {
 
     let count = 0;
 
-    // Recursive filling
     function* fill(posIdx, board, rem2s, rem3s) {
         if (count >= maxBoards) return;
 
         if (posIdx >= unknownPositions.length) {
-            // All filled - check legality
             if (panelsDontExceedConstraints(board) && isLegal(board, params)) {
                 count++;
                 yield board.clone();
@@ -312,16 +295,13 @@ function* fillNonVoltorbs(board, voltorbPositions, type, maxBoards = 10000) {
         const pos = unknownPositions[posIdx];
         const remainingPositions = unknownPositions.length - posIdx - 1;
 
-        // Must be able to place remaining 2s and 3s
         if (rem2s + rem3s > remainingPositions + 1) return;
 
-        // Try placing a 1
         board.set(pos.row, pos.col, PanelValue.One);
         if (panelsDontExceedConstraints(board)) {
             yield* fill(posIdx + 1, board, rem2s, rem3s);
         }
 
-        // Try placing a 2
         if (rem2s > 0) {
             board.set(pos.row, pos.col, PanelValue.Two);
             if (panelsDontExceedConstraints(board)) {
@@ -329,7 +309,6 @@ function* fillNonVoltorbs(board, voltorbPositions, type, maxBoards = 10000) {
             }
         }
 
-        // Try placing a 3
         if (rem3s > 0) {
             board.set(pos.row, pos.col, PanelValue.Three);
             if (panelsDontExceedConstraints(board)) {
@@ -337,22 +316,10 @@ function* fillNonVoltorbs(board, voltorbPositions, type, maxBoards = 10000) {
             }
         }
 
-        // Reset for backtracking
         board.set(pos.row, pos.col, PanelValue.Unknown);
     }
 
     yield* fill(0, template, remaining2s, remaining3s);
-}
-
-// Check if board is compatible with a specific type
-function isBoardCompatibleWithType(board, level, type) {
-    const params = getParams(level, type);
-    const { totalVoltorbs, totalSum } = board.getTotals();
-
-    if (params.n0 !== totalVoltorbs) return false;
-    if (getTotalSum(params) !== totalSum) return false;
-
-    return true;
 }
 
 // Generate compatible boards for a given board state
@@ -360,14 +327,12 @@ export function generateCompatibleBoards(board, maxBoards = 10000) {
     const level = board.level;
     const compatibleBoards = [];
 
-    // Early exit: check if the current revealed state is even possible
     if (!panelsDontExceedConstraints(board)) {
-        return compatibleBoards; // Empty - impossible state
+        return compatibleBoards;
     }
 
     const { totalVoltorbs, totalSum } = board.getTotals();
 
-    // Find compatible types
     const compatibleTypes = [];
     for (let type = 0; type < NUM_TYPES_PER_LEVEL; type++) {
         if (isCompatibleWithType(totalVoltorbs, totalSum, level, type)) {
@@ -377,7 +342,6 @@ export function generateCompatibleBoards(board, maxBoards = 10000) {
 
     if (compatibleTypes.length === 0) return compatibleBoards;
 
-    // Generate voltorb positions once
     const voltorbConfigs = [...generateVoltorbPositions(board)];
 
     for (const type of compatibleTypes) {
@@ -427,7 +391,6 @@ export function calculateTypeProbabilities(level, countsPerType) {
         }
     }
 
-    // Normalize
     if (pBoardSum > 0) {
         for (let i = 0; i < probs.length; i++) {
             probs[i] /= pBoardSum;
@@ -449,20 +412,13 @@ export function calculateProbabilities(board, compatibleBoards) {
         };
     }
 
-    // Group by type
     const boardsByType = groupBoardsByType(compatibleBoards, level);
-
-    // Count per type
     const countsPerType = boardsByType.map(group => group.length);
     const totalCompatible = countsPerType.reduce((a, b) => a + b, 0);
-
-    // Type probabilities
     const typeProbs = calculateTypeProbabilities(level, countsPerType);
 
-    // Find unknown panels
     const unknownPositions = board.getUnknownPositions();
 
-    // Calculate probabilities for each unknown panel
     const panelProbs = unknownPositions.map(pos => {
         const probs = { pos, pVoltorb: 0, pOne: 0, pTwo: 0, pThree: 0 };
 
@@ -473,7 +429,6 @@ export function calculateProbabilities(board, compatibleBoards) {
                 const typeBoards = boardsByType[type];
                 if (typeBoards.length === 0) continue;
 
-                // Count boards of this type where panel has this value
                 let countWithValue = 0;
                 for (const b of typeBoards) {
                     if (b.get(pos.row, pos.col) === value) {
@@ -503,7 +458,7 @@ export function calculateProbabilities(board, compatibleBoards) {
     };
 }
 
-// Find guaranteed safe panels (never voltorb in any compatible board)
+// Find guaranteed safe panels
 export function findSafePanels(board, compatibleBoards) {
     const safePanels = [];
     const unknownPositions = board.getUnknownPositions();
@@ -524,104 +479,361 @@ export function findSafePanels(board, compatibleBoards) {
     return safePanels;
 }
 
-// Find best panel to flip using simple heuristic (lowest voltorb probability)
-export function findBestPanel(board, probabilities) {
-    if (probabilities.panels.length === 0) {
-        return null;
+// ============================================================================
+// ITERATIVE DEEPENING SOLVER
+// ============================================================================
+
+/**
+ * Search state for the minimax algorithm.
+ * Tracks compatible boards grouped by type for efficient filtering.
+ */
+class SearchState {
+    constructor(board, boardsByType, pBoardNorm) {
+        this.board = board;
+        this.boardsByType = boardsByType;
+        this.pBoardNorm = pBoardNorm;
     }
 
-    let bestPanel = null;
-    let lowestVoltorbProb = 1.1;
-
-    for (const panelProb of probabilities.panels) {
-        // Prefer panels with lower voltorb probability
-        // Among those, prefer panels with higher multiplier probability
-        const score = panelProb.pVoltorb - (panelProb.pTwo + panelProb.pThree) * 0.01;
-
-        if (score < lowestVoltorbProb) {
-            lowestVoltorbProb = score;
-            bestPanel = panelProb.pos;
+    totalCompatible() {
+        let total = 0;
+        for (const boards of this.boardsByType) {
+            total += boards.length;
         }
+        return total;
     }
-
-    return bestPanel;
 }
 
-// Estimate win probability (simplified)
-export function estimateWinProbability(board, compatibleBoards, probabilities) {
-    if (compatibleBoards.length === 0) return 0;
-
-    // Find safe panels
-    const safePanels = findSafePanels(board, compatibleBoards);
-
-    // Count how many multipliers we still need
-    const { totalSum } = board.getTotals();
-
-    let revealed2s = 0, revealed3s = 0;
+/**
+ * Check if the game is won (all multipliers revealed).
+ */
+function isWon(state) {
     for (let i = 0; i < BOARD_SIZE; i++) {
         for (let j = 0; j < BOARD_SIZE; j++) {
-            const v = board.get(i, j);
-            if (v === PanelValue.Two) revealed2s++;
-            if (v === PanelValue.Three) revealed3s++;
-        }
-    }
-
-    // If we have safe panels, we can make progress without risk
-    if (safePanels.length > 0) {
-        // Check if any safe panel could be a multiplier
-        let safeMultiplierPossible = false;
-        for (const pos of safePanels) {
-            for (const cb of compatibleBoards) {
-                const v = cb.get(pos.row, pos.col);
-                if (isMultiplier(v)) {
-                    safeMultiplierPossible = true;
-                    break;
+            if (state.board.get(i, j) === PanelValue.Unknown) {
+                const pos = { row: i, col: j };
+                // Check if any compatible board has a multiplier here
+                for (const boards of state.boardsByType) {
+                    for (const b of boards) {
+                        if (isMultiplier(b.get(pos.row, pos.col))) {
+                            return false;
+                        }
+                    }
                 }
             }
-            if (safeMultiplierPossible) break;
-        }
-
-        if (safeMultiplierPossible) {
-            // We can make safe progress - estimate higher probability
-            return Math.min(0.95, 0.7 + safePanels.length * 0.05);
         }
     }
-
-    // Estimate based on lowest voltorb probability
-    const bestPanel = findBestPanel(board, probabilities);
-    if (!bestPanel) return 0;
-
-    const panelProb = probabilities.panels.find(p =>
-        p.pos.row === bestPanel.row && p.pos.col === bestPanel.col
-    );
-
-    if (!panelProb) return 0;
-
-    // Rough estimate: survival probability for next move
-    // This is a simplification - full minimax would be more accurate
-    const survivalProb = 1 - panelProb.pVoltorb;
-
-    // Calculate average voltorb probability only for RISKY panels (exclude safe ones)
-    // Safe panels don't contribute to risk since we can reveal them freely
-    const riskyPanels = probabilities.panels.filter(p => p.pVoltorb > 0);
-
-    if (riskyPanels.length === 0) {
-        // All remaining panels are safe - guaranteed win
-        return 1.0;
-    }
-
-    const avgVoltorbProb = riskyPanels.reduce((sum, p) => sum + p.pVoltorb, 0) / riskyPanels.length;
-
-    // Estimate future success based on risky panels we need to reveal
-    // Use risky panel count, not total unknown count
-    const estimatedFutureSuccess = Math.pow(1 - avgVoltorbProb, Math.max(1, riskyPanels.length / 3));
-
-    return survivalProb * Math.max(0.3, estimatedFutureSuccess);
+    return true;
 }
 
-// Main solver function
-export function solve(board, maxBoards = 10000) {
+/**
+ * Find a free (guaranteed safe) panel.
+ */
+function findFreePanel(state) {
+    for (let i = 0; i < BOARD_SIZE; i++) {
+        for (let j = 0; j < BOARD_SIZE; j++) {
+            const pos = { row: i, col: j };
+            if (state.board.get(i, j) !== PanelValue.Unknown) continue;
+
+            let isFree = true;
+            outer: for (const boards of state.boardsByType) {
+                for (const b of boards) {
+                    if (b.get(pos.row, pos.col) === PanelValue.Voltorb) {
+                        isFree = false;
+                        break outer;
+                    }
+                }
+            }
+
+            if (isFree) return pos;
+        }
+    }
+    return null;
+}
+
+/**
+ * Get unknown panels sorted by voltorb probability (safest first).
+ */
+function getOrderedUnknownPanels(state) {
+    const panels = [];
+
+    for (let i = 0; i < BOARD_SIZE; i++) {
+        for (let j = 0; j < BOARD_SIZE; j++) {
+            if (state.board.get(i, j) === PanelValue.Unknown) {
+                const pos = { row: i, col: j };
+                const pVoltorb = probabilityOf(state, pos, PanelValue.Voltorb);
+                panels.push({ pos, pVoltorb });
+            }
+        }
+    }
+
+    // Sort by voltorb probability (lowest first)
+    panels.sort((a, b) => a.pVoltorb - b.pVoltorb);
+
+    return panels.map(p => p.pos);
+}
+
+/**
+ * Calculate P(board) normalization factor.
+ */
+function calculateProbNorm(boardsByType, level) {
+    let pBoard = 0;
+    for (let type = 0; type < NUM_TYPES_PER_LEVEL; type++) {
+        const nAccepted = Number(getAcceptedCount(level, type));
+        if (nAccepted > 0) {
+            pBoard += boardsByType[type].length / nAccepted;
+        }
+    }
+    return pBoard;
+}
+
+/**
+ * Calculate probability of a specific value at a position.
+ */
+function probabilityOf(state, pos, value) {
+    if (state.pBoardNorm <= 0) return 0;
+
+    const level = state.board.level;
+    let pValue = 0;
+
+    for (let type = 0; type < NUM_TYPES_PER_LEVEL; type++) {
+        const typeBoards = state.boardsByType[type];
+        if (typeBoards.length === 0) continue;
+
+        const nAccepted = Number(getAcceptedCount(level, type));
+        if (nAccepted <= 0) continue;
+
+        let countWithValue = 0;
+        for (const b of typeBoards) {
+            if (b.get(pos.row, pos.col) === value) {
+                countWithValue++;
+            }
+        }
+
+        const pValueGivenType = countWithValue / typeBoards.length;
+        const pTypeWeight = typeBoards.length / nAccepted;
+        pValue += pValueGivenType * pTypeWeight / state.pBoardNorm;
+    }
+
+    return pValue;
+}
+
+/**
+ * Create a new search state after revealing a panel.
+ */
+function revealPanel(state, pos, value) {
+    const newBoard = state.board.withPanelRevealed(pos, value);
+
+    // Filter compatible boards
+    const newBoardsByType = [];
+    for (let type = 0; type < NUM_TYPES_PER_LEVEL; type++) {
+        newBoardsByType[type] = state.boardsByType[type].filter(
+            b => b.get(pos.row, pos.col) === value
+        );
+    }
+
+    const newPBoardNorm = calculateProbNorm(newBoardsByType, newBoard.level);
+
+    return new SearchState(newBoard, newBoardsByType, newPBoardNorm);
+}
+
+/**
+ * Heuristic evaluation for leaf nodes.
+ */
+function heuristicEval(state) {
+    if (isWon(state)) return 1.0;
+
+    // Count multipliers still needed
+    let multipliersNeeded = 0;
+    for (let i = 0; i < BOARD_SIZE; i++) {
+        for (let j = 0; j < BOARD_SIZE; j++) {
+            if (state.board.get(i, j) === PanelValue.Unknown) {
+                const pos = { row: i, col: j };
+                // Check if any board has a multiplier here
+                outer: for (const boards of state.boardsByType) {
+                    for (const b of boards) {
+                        if (isMultiplier(b.get(pos.row, pos.col))) {
+                            multipliersNeeded++;
+                            break outer;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (multipliersNeeded === 0) return 1.0;
+
+    // Collect voltorb probabilities for risky panels
+    const voltorbProbs = [];
+    for (let i = 0; i < BOARD_SIZE; i++) {
+        for (let j = 0; j < BOARD_SIZE; j++) {
+            if (state.board.get(i, j) !== PanelValue.Unknown) continue;
+            const pos = { row: i, col: j };
+            const pVoltorb = probabilityOf(state, pos, PanelValue.Voltorb);
+            if (pVoltorb > 0) {
+                voltorbProbs.push(pVoltorb);
+            }
+        }
+    }
+
+    if (voltorbProbs.length === 0) return 1.0;
+
+    // Sort and estimate survival probability
+    voltorbProbs.sort((a, b) => a - b);
+    const panelsToReveal = Math.min(voltorbProbs.length, multipliersNeeded);
+    let survivalProd = 1.0;
+    for (let i = 0; i < panelsToReveal; i++) {
+        survivalProd *= (1 - voltorbProbs[i]);
+    }
+
+    return survivalProd;
+}
+
+/**
+ * Depth-limited search with memoization.
+ */
+function depthLimitedSearch(state, depthLimit, memo, nodesRef, startTime, timeout) {
+    nodesRef.count++;
+
+    // Timeout check
+    if (Date.now() - startTime > timeout) {
+        return { bestPanel: null, winProb: heuristicEval(state), fullyExplored: false };
+    }
+
+    // Win check
+    if (isWon(state)) {
+        return { bestPanel: null, winProb: 1.0, fullyExplored: true };
+    }
+
+    // Depth limit reached
+    if (depthLimit <= 0) {
+        return { bestPanel: null, winProb: heuristicEval(state), fullyExplored: false };
+    }
+
+    // Memoization check
+    const hash = state.board.hash();
+    const memoKey = `${hash}_${depthLimit}`;
+    if (memo.has(memoKey)) {
+        const cached = memo.get(memoKey);
+        return { bestPanel: cached.bestPanel, winProb: cached.winProb, fullyExplored: cached.fullyExplored };
+    }
+
+    // Free panel check
+    const freePanel = findFreePanel(state);
+    if (freePanel) {
+        let winProb = 0;
+        let fullyExplored = true;
+
+        for (let value = 1; value <= 3; value++) {
+            const pValue = probabilityOf(state, freePanel, value);
+            if (pValue <= 0) continue;
+
+            const nextState = revealPanel(state, freePanel, value);
+            const child = depthLimitedSearch(nextState, depthLimit, memo, nodesRef, startTime, timeout);
+
+            winProb += pValue * child.winProb;
+            if (!child.fullyExplored) fullyExplored = false;
+        }
+
+        memo.set(memoKey, { bestPanel: freePanel, winProb, fullyExplored });
+        return { bestPanel: freePanel, winProb, fullyExplored };
+    }
+
+    // Get unknown panels in heuristic order
+    const unknownPanels = getOrderedUnknownPanels(state);
+
+    if (unknownPanels.length === 0) {
+        return { bestPanel: null, winProb: 0, fullyExplored: true };
+    }
+
+    let bestPanel = unknownPanels[0];
+    let bestWinProb = 0;
+    let allFullyExplored = true;
+
+    for (const pos of unknownPanels) {
+        // Upper-bound pruning
+        const upperBound = 1 - probabilityOf(state, pos, PanelValue.Voltorb);
+        if (upperBound <= bestWinProb) continue;
+
+        let panelWinProb = 0;
+        let panelFullyExplored = true;
+
+        for (let value = 1; value <= 3; value++) {
+            const pValue = probabilityOf(state, pos, value);
+            if (pValue <= 0) continue;
+
+            const nextState = revealPanel(state, pos, value);
+            const child = depthLimitedSearch(nextState, depthLimit - 1, memo, nodesRef, startTime, timeout);
+
+            panelWinProb += pValue * child.winProb;
+            if (!child.fullyExplored) panelFullyExplored = false;
+        }
+
+        if (!panelFullyExplored) allFullyExplored = false;
+
+        if (panelWinProb > bestWinProb) {
+            bestWinProb = panelWinProb;
+            bestPanel = pos;
+        }
+
+        // Timeout check
+        if (Date.now() - startTime > timeout) {
+            allFullyExplored = false;
+            break;
+        }
+    }
+
+    memo.set(memoKey, { bestPanel, winProb: bestWinProb, fullyExplored: allFullyExplored });
+    return { bestPanel, winProb: bestWinProb, fullyExplored: allFullyExplored };
+}
+
+/**
+ * Iterative deepening solver.
+ * Yields progress updates at each depth level.
+ */
+export function* iterativeDeepening(board, compatibleBoards, options = {}) {
+    const { maxDepth = 100, timeout = 10000 } = options;
+
+    const level = board.level;
+    const boardsByType = groupBoardsByType(compatibleBoards, level);
+    const pBoardNorm = calculateProbNorm(boardsByType, level);
+
+    const initialState = new SearchState(board, boardsByType, pBoardNorm);
+
+    const startTime = Date.now();
+    let memo = new Map();
+    let nodesRef = { count: 0 };
+
+    // Check for free panel first
+    const freePanel = findFreePanel(initialState);
+
+    for (let depth = 1; depth <= maxDepth; depth++) {
+        const result = depthLimitedSearch(initialState, depth, memo, nodesRef, startTime, timeout);
+
+        const elapsed = Date.now() - startTime;
+
+        yield {
+            bestPanel: freePanel || result.bestPanel,
+            winProbability: result.winProb,
+            depth,
+            isExact: result.fullyExplored,
+            nodesSearched: nodesRef.count,
+            elapsed,
+            reason: freePanel ? 'Free panel (guaranteed safe)' : (result.fullyExplored ? 'Exact solution' : `Depth ${depth}`)
+        };
+
+        if (result.fullyExplored || elapsed >= timeout) {
+            break;
+        }
+    }
+}
+
+/**
+ * Main solver function with iterative deepening.
+ */
+export function solve(board, maxBoards = 10000, options = {}) {
     const startTime = performance.now();
+    const { timeout = 5000 } = options;
 
     // Generate compatible boards
     const compatibleBoards = generateCompatibleBoards(board, maxBoards);
@@ -633,7 +845,10 @@ export function solve(board, maxBoards = 10000) {
             probabilities: { panels: [], typeProbs: [], totalCompatible: 0 },
             safePanels: [],
             compatibleCount: 0,
-            computeTime: performance.now() - startTime
+            computeTime: performance.now() - startTime,
+            depth: 0,
+            isExact: true,
+            reason: 'No compatible boards'
         };
     }
 
@@ -643,11 +858,17 @@ export function solve(board, maxBoards = 10000) {
     // Find safe panels
     const safePanels = findSafePanels(board, compatibleBoards);
 
+    // Run iterative deepening
+    let finalResult = null;
+    for (const progress of iterativeDeepening(board, compatibleBoards, { timeout })) {
+        finalResult = progress;
+    }
+
     // Determine suggested panel
-    let suggestedPanel;
-    if (safePanels.length > 0) {
-        // Prefer safe panel with highest expected value
-        // E[V] = P(1)*1 + P(2)*2 + P(3)*3
+    let suggestedPanel = finalResult?.bestPanel;
+
+    // If we have safe panels and no solver result, prefer safe panel with highest expected value
+    if (safePanels.length > 0 && !suggestedPanel) {
         let bestSafe = safePanels[0];
         let bestScore = -1;
 
@@ -664,19 +885,43 @@ export function solve(board, maxBoards = 10000) {
             }
         }
         suggestedPanel = bestSafe;
-    } else {
-        suggestedPanel = findBestPanel(board, probabilities);
     }
-
-    // Estimate win probability
-    const winProbability = estimateWinProbability(board, compatibleBoards, probabilities);
 
     return {
         suggestedPanel,
-        winProbability,
+        winProbability: finalResult?.winProbability ?? 0,
         probabilities,
         safePanels,
         compatibleCount: compatibleBoards.length,
-        computeTime: performance.now() - startTime
+        computeTime: performance.now() - startTime,
+        depth: finalResult?.depth ?? 0,
+        isExact: finalResult?.isExact ?? false,
+        reason: finalResult?.reason ?? 'Unknown'
     };
+}
+
+// For backward compatibility
+export function findBestPanel(board, probabilities) {
+    if (probabilities.panels.length === 0) {
+        return null;
+    }
+
+    let bestPanel = null;
+    let lowestVoltorbProb = 1.1;
+
+    for (const panelProb of probabilities.panels) {
+        const score = panelProb.pVoltorb - (panelProb.pTwo + panelProb.pThree) * 0.01;
+        if (score < lowestVoltorbProb) {
+            lowestVoltorbProb = score;
+            bestPanel = panelProb.pos;
+        }
+    }
+
+    return bestPanel;
+}
+
+export function estimateWinProbability(board, compatibleBoards, probabilities) {
+    // This is now a fallback - the main solver uses iterative deepening
+    const result = solve(board, compatibleBoards.length);
+    return result.winProbability;
 }

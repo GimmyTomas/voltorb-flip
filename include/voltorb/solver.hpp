@@ -2,104 +2,232 @@
 
 #include "board.hpp"
 #include "sampler.hpp"
+#include "transposition.hpp"
+#include "zobrist.hpp"
 
 #include <chrono>
+#include <functional>
 #include <optional>
 #include <unordered_map>
 #include <vector>
 
 namespace voltorb {
 
-// Result of solver computation
+/**
+ * Result of solver computation.
+ */
 struct SolverResult {
     Position suggestedPosition;
     double winProbability;
-    bool isExact;         // true = exhaustive, false = sampled
+    bool isExact;         // true = fully searched, false = depth-limited
     size_t boardsEvaluated;
     std::chrono::milliseconds computeTime;
+    int searchDepth;      // Depth at which this result was computed
 
     // Additional info
     std::optional<std::string> reason; // Why this panel was chosen
 };
 
-// Solver options
-struct SolverOptions {
-    std::chrono::milliseconds timeout{5000};
-    size_t maxCompatibleBoards{100000};  // Fallback threshold
-    size_t sampleSize{10000};            // For Monte Carlo
-    bool enableParallel{true};           // Use multiple threads
-};
-
-// Memoization entry
-struct MemoEntry {
+/**
+ * Progress update during iterative deepening.
+ * Sent at each completed depth level.
+ */
+struct SolverProgress {
     Position bestPanel;
-    double winProb;
+    double winProbability;
+    int depth;            // Current search depth
+    bool isExact;         // True when fully converged (no depth limit hit)
+    size_t nodesSearched; // Nodes evaluated so far
+    std::chrono::milliseconds elapsed;
 };
 
-// Main solver using recursive minimax with memoization
+/**
+ * Callback for progress updates during iterative deepening.
+ */
+using ProgressCallback = std::function<void(const SolverProgress&)>;
+
+/**
+ * Solver options.
+ */
+struct SolverOptions {
+    std::chrono::milliseconds timeout{10000};  // Max time for solving
+    size_t maxCompatibleBoards{500000};        // Max boards to enumerate
+    size_t transpositionTableSize{1 << 20};    // 1M entries (~32MB)
+    bool enableIterativeDeepening{true};       // Use iterative deepening
+    int maxDepth{100};                         // Max search depth (effectively unlimited)
+    size_t sampleSize{10000};                  // Deprecated: kept for API compatibility
+};
+
+/**
+ * Internal state for a board during search.
+ * Tracks compatible boards grouped by type for efficient filtering.
+ */
+struct SearchState {
+    Board board;
+    uint64_t zobristHash;
+    std::array<std::vector<size_t>, NUM_TYPES_PER_LEVEL> indicesPerType;
+    double pBoardNorm;  // Normalization factor for probability calculation
+
+    // Count total compatible boards
+    size_t totalCompatible() const {
+        size_t total = 0;
+        for (const auto& indices : indicesPerType) {
+            total += indices.size();
+        }
+        return total;
+    }
+};
+
+/**
+ * Result from depth-limited search.
+ */
+struct DepthLimitedResult {
+    Position bestPanel;
+    double winProbability;
+    bool fullyExplored;  // True if search completed without hitting depth limit
+};
+
+/**
+ * Main solver using iterative deepening with minimax.
+ *
+ * The solver computes the exact win probability by searching all possible
+ * game outcomes. It uses several optimizations:
+ *
+ * 1. Zobrist hashing for O(1) incremental hash updates
+ * 2. Transposition table for memoization with depth tracking
+ * 3. Move ordering (safe panels first, then by survival probability)
+ * 4. Upper-bound pruning (skip panels that can't beat current best)
+ * 5. Iterative deepening for anytime results
+ *
+ * The algorithm is provably optimal: it maximizes win probability by
+ * computing the exact expectimax tree.
+ */
 class Solver {
 public:
     explicit Solver(SolverOptions options = {});
 
-    // Find the best panel to flip
-    SolverResult solve(const Board& board);
+    /**
+     * Find the best panel to flip.
+     * Uses iterative deepening with progress callbacks.
+     *
+     * @param board The current board state
+     * @param onProgress Optional callback for progress updates
+     * @return The best panel and win probability
+     */
+    SolverResult solve(const Board& board,
+                       ProgressCallback onProgress = nullptr);
 
-    // Find all guaranteed safe panels (can be flipped without risk)
+    /**
+     * Find all guaranteed safe panels (can be flipped without risk).
+     */
     std::vector<Position> findSafePanels(const Board& board);
 
-    // Get probability distribution for all panels
+    /**
+     * Get probability distribution for all panels.
+     * Returns (position, win_probability_if_chosen) pairs.
+     */
     std::vector<std::pair<Position, double>> getPanelWinProbabilities(const Board& board);
 
-    // Reset memoization cache
-    void clearCache();
+    /**
+     * Reset solver state (clears transposition table and statistics).
+     */
+    void reset();
 
-    // Get statistics
-    size_t getCacheHits() const { return cacheHits_; }
-    size_t getCacheMisses() const { return cacheMisses_; }
+    /**
+     * Clear memoization cache. Alias for reset() for API compatibility.
+     */
+    void clearCache() { reset(); }
+
+    /**
+     * Get statistics.
+     */
+    size_t getCacheHits() const { return tt_.getHits(); }
+    size_t getCacheMisses() const { return tt_.getMisses(); }
+    size_t getNodesEvaluated() const { return nodesEvaluated_; }
 
 private:
     SolverOptions options_;
-    std::unordered_map<size_t, MemoEntry> cache_;
-    size_t cacheHits_ = 0;
-    size_t cacheMisses_ = 0;
+    TranspositionTable tt_;
+
+    // Statistics
+    size_t nodesEvaluated_ = 0;
 
     // Timeout tracking
     std::chrono::steady_clock::time_point startTime_;
     bool timedOut_ = false;
 
+    // All compatible boards (stored during solve)
+    std::vector<Board> allBoards_;
+
     // Check if we've exceeded timeout
     bool checkTimeout();
 
-    // Exhaustive solver
-    SolverResult solveExhaustive(const Board& board,
-                                 const std::vector<Board>& compatibleBoards);
+    /**
+     * Generate compatible boards and group by type.
+     * Returns the initial search state.
+     */
+    std::optional<SearchState> initializeSearch(const Board& board);
 
-    // Monte Carlo fallback solver
-    SolverResult solveMonteCarlo(const Board& board);
+    /**
+     * Iterative deepening search.
+     * Searches at increasing depths, calling onProgress after each depth.
+     */
+    SolverResult iterativeDeepening(const SearchState& initialState,
+                                    ProgressCallback onProgress);
 
-    // Recursive computation of win probability
-    // Returns (best_panel, win_probability)
-    std::pair<Position, double>
-    computeBestPanel(const Board& board,
-                     const std::array<std::vector<size_t>, NUM_TYPES_PER_LEVEL>& indicesPerType,
-                     const std::vector<Board>& allBoards, int depth);
+    /**
+     * Depth-limited minimax search.
+     *
+     * @param state Current search state
+     * @param depthLimit Maximum remaining depth
+     * @return Best panel and win probability
+     */
+    DepthLimitedResult depthLimitedSearch(const SearchState& state, int depthLimit);
 
-    // Check for free panel (guaranteed safe)
-    std::optional<Position>
-    findFreePanel(const Board& board,
-                  const std::array<std::vector<size_t>, NUM_TYPES_PER_LEVEL>& indicesPerType,
-                  const std::vector<Board>& allBoards);
+    /**
+     * Heuristic evaluation for leaf nodes when depth limit is reached.
+     * Estimates win probability based on:
+     * - Number of remaining multipliers to reveal
+     * - Distribution of voltorb probabilities among unknown panels
+     */
+    double heuristicEval(const SearchState& state);
 
-    // Calculate P(board) normalization factor
-    double calculateProbNorm(
-        const Board& board,
-        const std::array<std::vector<size_t>, NUM_TYPES_PER_LEVEL>& indicesPerType);
+    /**
+     * Check if the game is won (all multipliers revealed).
+     */
+    bool isWon(const SearchState& state) const;
 
-    // Filter compatible boards after revealing a panel
-    std::array<std::vector<size_t>, NUM_TYPES_PER_LEVEL>
-    filterIndices(const Board& revealedBoard,
-                  const std::array<std::vector<size_t>, NUM_TYPES_PER_LEVEL>& currentIndices,
-                  const std::vector<Board>& allBoards);
+    /**
+     * Find a free (guaranteed safe) panel.
+     */
+    std::optional<Position> findFreePanel(const SearchState& state) const;
+
+    /**
+     * Get unknown panels sorted by heuristic (move ordering).
+     * Panels with lower voltorb probability come first.
+     */
+    std::vector<Position> getOrderedUnknownPanels(const SearchState& state) const;
+
+    /**
+     * Calculate P(board) normalization factor.
+     */
+    double calculateProbNorm(const SearchState& state) const;
+
+    /**
+     * Create a new search state after revealing a panel.
+     */
+    SearchState revealPanel(const SearchState& state, Position pos, PanelValue value) const;
+
+    /**
+     * Calculate probability of a specific value at a position.
+     */
+    double probabilityOf(const SearchState& state, Position pos, PanelValue value) const;
+
+    /**
+     * Get upper bound on win probability for a panel.
+     * Used for pruning: if upper_bound <= current_best, skip this panel.
+     */
+    double getUpperBound(const SearchState& state, Position pos) const;
 };
 
 } // namespace voltorb

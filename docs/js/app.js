@@ -302,7 +302,10 @@ class App {
 
         // Update win probability and solver info
         if (this.solverResult) {
-            this.ui.updateWinProbability(this.solverResult.winProbability);
+            this.ui.updateWinProbability(this.solverResult.winProbability, {
+                isExact: this.solverResult.isExact,
+                depth: this.solverResult.depth
+            });
 
             // Update suggestion
             const isSafe = suggested && safePanels.some(p =>

@@ -116,11 +116,18 @@ size_t Board::totalMultipliersRequired() const {
     // Calculate from hints: total_sum = n1 + 2*n2 + 3*n3
     // total_voltorbs = n0
     // n0 + n1 + n2 + n3 = 25
-    // So: n1 = 25 - n0 - n2 - n3
-    // total_sum = (25 - n0 - n2 - n3) + 2*n2 + 3*n3 = 25 - n0 + n2 + 2*n3
-    // We need n2 + n3, but can't determine individually from hints alone
+    //
+    // We want to return the MINIMUM number of multipliers that could exist,
+    // so we can declare a win as soon as we've revealed at least that many.
+    //
+    // Given: extra = n2 + 2*n3 (extra points beyond 1 per non-voltorb)
+    // total = n2 + n3 (total multipliers)
+    //
+    // Minimum multipliers: when all are 3s -> n3 = extra/2, total = extra/2
+    // Maximum multipliers: when all are 2s -> n2 = extra, total = extra
+    //
+    // For the win condition, we use ceil(extra/2) as the minimum.
 
-    // For now, estimate based on total sum and voltorb count
     int totalSum = 0;
     int totalVoltorbs = 0;
     for (size_t i = 0; i < BOARD_SIZE; i++) {
@@ -128,16 +135,17 @@ size_t Board::totalMultipliersRequired() const {
         totalVoltorbs += rowHints_[i].voltorbCount;
     }
 
-    int n1 = static_cast<int>(TOTAL_PANELS) - totalVoltorbs;
-    // total_sum = n1 + extra_from_multipliers
-    // where extra = n2 + 2*n3
-    // So multipliers contribute: total_sum - (25 - totalVoltorbs) = total_sum - 25 + totalVoltorbs
-    int extraFromMultipliers = totalSum - static_cast<int>(TOTAL_PANELS) + totalVoltorbs;
+    // extra = total_sum - (25 - n0) = total_sum - 25 + n0
+    int extra = totalSum - static_cast<int>(TOTAL_PANELS) + totalVoltorbs;
 
-    // Minimum multipliers: ceil(extra / 2) since each mult adds at least 1
-    // Maximum multipliers: extra (if all are 2s)
-    // We return the minimum needed
-    return static_cast<size_t>(extraFromMultipliers > 0 ? extraFromMultipliers : 0);
+    if (extra <= 0) {
+        return 0;  // No multipliers needed (all panels are 1s or voltorbs)
+    }
+
+    // Minimum multipliers = ceil(extra / 2)
+    // This assumes the best case where all multipliers are 3s.
+    // We use this as the threshold for declaring a win.
+    return static_cast<size_t>((extra + 1) / 2);
 }
 
 Board Board::withPanelRevealed(Position pos, PanelValue value) const {
