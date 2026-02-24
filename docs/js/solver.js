@@ -557,6 +557,22 @@ function isWon(state) {
     }
     if (shouldLog) {
         console.log(`[DEBUG] isWon=true (no unrevealed multipliers), totalBoards=${totalBoards}, unknownCount=${unknownCount}`);
+        // Log a sample board to verify multiplier positions
+        for (const boards of state.boardsByType) {
+            if (boards.length > 0) {
+                const b = boards[0];
+                let mults = [];
+                for (let i = 0; i < BOARD_SIZE; i++) {
+                    for (let j = 0; j < BOARD_SIZE; j++) {
+                        if (isMultiplier(b.get(i, j))) {
+                            mults.push(`(${i},${j})=${b.get(i, j)}`);
+                        }
+                    }
+                }
+                console.log(`  Sample board multipliers: ${mults.join(', ')}`);
+                break;
+            }
+        }
     }
     return true;
 }
