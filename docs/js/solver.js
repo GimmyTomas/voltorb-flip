@@ -734,23 +734,27 @@ function depthLimitedSearch(state, depthLimit, memo, nodesRef, startTime, timeou
     // Free panel check
     const freePanel = findFreePanel(state);
     if (freePanel) {
-        console.log(`[DEBUG] Free panel found: (${freePanel.row},${freePanel.col}) at depth=${depthLimit}`);
+        // Only log at high depths to avoid spam
+        const shouldLog = depthLimit >= 5 || state.totalCompatible() <= 30;
+        if (shouldLog) console.log(`[DEBUG] Free panel found: (${freePanel.row},${freePanel.col}) at depth=${depthLimit}, totalBoards=${state.totalCompatible()}`);
         let winProb = 0;
         let fullyExplored = true;
+        let pSum = 0;
 
         for (let value = 1; value <= 3; value++) {
             const pValue = probabilityOf(state, freePanel, value);
+            pSum += pValue;
             if (pValue <= 0) continue;
 
             const nextState = revealPanel(state, freePanel, value);
             const child = depthLimitedSearch(nextState, depthLimit, memo, nodesRef, startTime, timeout);
 
-            console.log(`  Free (${freePanel.row},${freePanel.col}) val=${value}: P=${pValue.toFixed(3)}, W=${child.winProb.toFixed(3)}, exact=${child.fullyExplored}`);
+            if (shouldLog) console.log(`  Free (${freePanel.row},${freePanel.col}) val=${value}: P=${pValue.toFixed(4)}, W=${child.winProb.toFixed(4)}, exact=${child.fullyExplored}, contribution=${(pValue * child.winProb).toFixed(4)}`);
 
             winProb += pValue * child.winProb;
             if (!child.fullyExplored) fullyExplored = false;
         }
-        console.log(`  Free panel total: winProb=${winProb.toFixed(3)}, fullyExplored=${fullyExplored}`);
+        if (shouldLog) console.log(`  Free panel total: pSum=${pSum.toFixed(4)}, winProb=${winProb.toFixed(4)}, fullyExplored=${fullyExplored}`);
 
         memo.set(memoKey, { bestPanel: freePanel, winProb, fullyExplored });
         return { bestPanel: freePanel, winProb, fullyExplored };
