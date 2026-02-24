@@ -507,32 +507,52 @@ class SearchState {
  * Check if the game is won (all multipliers revealed).
  */
 function isWon(state) {
+    const totalBoards = state.boardsByType.reduce((sum, boards) => sum + boards.length, 0);
+    const shouldLog = totalBoards <= 30;
+
+    // First, count unknown panels and boards per type
+    let unknownCount = 0;
+    for (let i = 0; i < BOARD_SIZE; i++) {
+        for (let j = 0; j < BOARD_SIZE; j++) {
+            if (state.board.get(i, j) === PanelValue.Unknown) {
+                unknownCount++;
+            }
+        }
+    }
+
+    if (shouldLog && totalBoards === 0) {
+        console.log(`[DEBUG] isWon: WARNING - no compatible boards! unknownCount=${unknownCount}`);
+        return true; // No boards means nothing to check
+    }
+
     const unrevealed = [];
     for (let i = 0; i < BOARD_SIZE; i++) {
         for (let j = 0; j < BOARD_SIZE; j++) {
             if (state.board.get(i, j) === PanelValue.Unknown) {
                 const pos = { row: i, col: j };
+                let hasMultiplier = false;
                 // Check if any compatible board has a multiplier here
                 for (const boards of state.boardsByType) {
                     for (const b of boards) {
                         if (isMultiplier(b.get(pos.row, pos.col))) {
+                            hasMultiplier = true;
                             unrevealed.push(`(${i},${j})`);
-                            // Continue to next position
                             break;
                         }
                     }
-                    if (unrevealed.length > 0 && unrevealed[unrevealed.length - 1] === `(${i},${j})`) break;
+                    if (hasMultiplier) break;
                 }
             }
         }
     }
     if (unrevealed.length > 0) {
-        // Only log if total boards is small (to avoid spam)
-        const totalBoards = state.boardsByType.reduce((sum, boards) => sum + boards.length, 0);
-        if (totalBoards <= 30) {
-            console.log(`[DEBUG] isWon=false, unrevealed multipliers at: ${unrevealed.join(', ')}, totalBoards=${totalBoards}`);
+        if (shouldLog) {
+            console.log(`[DEBUG] isWon=false, unrevealed multipliers at: ${unrevealed.join(', ')}, totalBoards=${totalBoards}, unknownCount=${unknownCount}`);
         }
         return false;
+    }
+    if (shouldLog) {
+        console.log(`[DEBUG] isWon=true (no unrevealed multipliers), totalBoards=${totalBoards}, unknownCount=${unknownCount}`);
     }
     return true;
 }
