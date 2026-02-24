@@ -520,9 +520,13 @@ function isWon(state) {
         }
     }
 
-    if (shouldLog && totalBoards === 0) {
-        console.log(`[DEBUG] isWon: WARNING - no compatible boards! unknownCount=${unknownCount}`);
-        return true; // No boards means nothing to check
+    if (totalBoards === 0) {
+        if (shouldLog) {
+            console.log(`[DEBUG] isWon: WARNING - no compatible boards! unknownCount=${unknownCount}`);
+        }
+        // No compatible boards is an error state - should not happen
+        // Return false to be safe (assume not won)
+        return unknownCount === 0; // Only won if no unknowns remain
     }
 
     const unrevealed = [];
