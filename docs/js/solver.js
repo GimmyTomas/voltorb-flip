@@ -507,6 +507,7 @@ class SearchState {
  * Check if the game is won (all multipliers revealed).
  */
 function isWon(state) {
+    const unrevealed = [];
     for (let i = 0; i < BOARD_SIZE; i++) {
         for (let j = 0; j < BOARD_SIZE; j++) {
             if (state.board.get(i, j) === PanelValue.Unknown) {
@@ -515,12 +516,23 @@ function isWon(state) {
                 for (const boards of state.boardsByType) {
                     for (const b of boards) {
                         if (isMultiplier(b.get(pos.row, pos.col))) {
-                            return false;
+                            unrevealed.push(`(${i},${j})`);
+                            // Continue to next position
+                            break;
                         }
                     }
+                    if (unrevealed.length > 0 && unrevealed[unrevealed.length - 1] === `(${i},${j})`) break;
                 }
             }
         }
+    }
+    if (unrevealed.length > 0) {
+        // Only log if total boards is small (to avoid spam)
+        const totalBoards = state.boardsByType.reduce((sum, boards) => sum + boards.length, 0);
+        if (totalBoards <= 30) {
+            console.log(`[DEBUG] isWon=false, unrevealed multipliers at: ${unrevealed.join(', ')}, totalBoards=${totalBoards}`);
+        }
+        return false;
     }
     return true;
 }
@@ -821,7 +833,9 @@ export function* iterativeDeepening(board, compatibleBoards, options = {}) {
         // from shallower searches, effectively limiting all searches to depth 1.
         const memo = new Map();
 
+        console.log(`[DEBUG] ===== Starting iterative deepening depth=${depth} =====`);
         const result = depthLimitedSearch(initialState, depth, memo, nodesRef, startTime, timeout);
+        console.log(`[DEBUG] ===== Depth ${depth} result: winProb=${result.winProb.toFixed(3)}, exact=${result.fullyExplored}, bestPanel=(${result.bestPanel?.row},${result.bestPanel?.col}) =====`);
 
         const elapsed = Date.now() - startTime;
 
