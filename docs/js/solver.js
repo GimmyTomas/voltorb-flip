@@ -230,7 +230,7 @@ function* generateVoltorbPositions(board) {
 }
 
 // Fill non-voltorb positions with 1s, 2s, 3s according to type
-function* fillNonVoltorbs(board, voltorbPositions, type, maxBoards = 10000) {
+function* fillNonVoltorbs(board, voltorbPositions, type, maxBoards = 500000) {
     const level = board.level;
     const params = getParams(level, type);
 
@@ -323,7 +323,7 @@ function* fillNonVoltorbs(board, voltorbPositions, type, maxBoards = 10000) {
 }
 
 // Generate compatible boards for a given board state
-export function generateCompatibleBoards(board, maxBoards = 10000) {
+export function generateCompatibleBoards(board, maxBoards = 500000) {
     const level = board.level;
     const compatibleBoards = [];
 
@@ -866,12 +866,14 @@ export function* iterativeDeepening(board, compatibleBoards, options = {}) {
 /**
  * Main solver function with iterative deepening.
  */
-export function solve(board, maxBoards = 10000, options = {}) {
+export function solve(board, maxBoards = 500000, options = {}) {
     const startTime = performance.now();
     const { timeout = 5000 } = options;
 
     // Generate compatible boards
     const compatibleBoards = generateCompatibleBoards(board, maxBoards);
+
+    const capped = compatibleBoards.length >= maxBoards;
 
     if (compatibleBoards.length === 0) {
         return {
@@ -880,6 +882,7 @@ export function solve(board, maxBoards = 10000, options = {}) {
             probabilities: { panels: [], typeProbs: [], totalCompatible: 0 },
             safePanels: [],
             compatibleCount: 0,
+            capped: false,
             computeTime: performance.now() - startTime,
             depth: 0,
             isExact: true,
@@ -928,6 +931,7 @@ export function solve(board, maxBoards = 10000, options = {}) {
         probabilities,
         safePanels,
         compatibleCount: compatibleBoards.length,
+        capped,
         computeTime: performance.now() - startTime,
         depth: finalResult?.depth ?? 0,
         isExact: finalResult?.isExact ?? false,
@@ -940,12 +944,13 @@ export function solve(board, maxBoards = 10000, options = {}) {
  * Calls onProgress after each depth, onComplete when done.
  * Returns a cancel function.
  */
-export function solveProgressive(board, onProgress, onComplete, maxBoards = 10000, options = {}) {
+export function solveProgressive(board, onProgress, onComplete, maxBoards = 500000, options = {}) {
     const { timeout = 5000 } = options;
     const startTime = performance.now();
 
     // Phase 1 & 2: Generate boards + probabilities (sync, fast)
     const compatibleBoards = generateCompatibleBoards(board, maxBoards);
+    const capped = compatibleBoards.length >= maxBoards;
 
     if (compatibleBoards.length === 0) {
         const result = {
@@ -954,6 +959,7 @@ export function solveProgressive(board, onProgress, onComplete, maxBoards = 1000
             probabilities: { panels: [], typeProbs: [], totalCompatible: 0 },
             safePanels: [],
             compatibleCount: 0,
+            capped: false,
             computeTime: performance.now() - startTime,
             depth: 0,
             isExact: true,
@@ -996,6 +1002,7 @@ export function solveProgressive(board, onProgress, onComplete, maxBoards = 1000
             probabilities,
             safePanels,
             compatibleCount: compatibleBoards.length,
+            capped,
             computeTime: performance.now() - startTime,
             depth: progress.depth,
             isExact: progress.isExact,

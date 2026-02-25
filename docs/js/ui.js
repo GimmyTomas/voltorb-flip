@@ -471,7 +471,7 @@ export class UI {
     }
 
     // Update solver info (compatible boards and type probabilities)
-    updateSolverInfo(compatibleCount, typeProbs) {
+    updateSolverInfo(compatibleCount, typeProbs, capped = false) {
         const countEl = document.getElementById('compatibleCount');
         const listEl = document.getElementById('boardTypesList');
 
@@ -482,7 +482,7 @@ export class UI {
         }
 
         // Format compatible count with thousands separator
-        countEl.textContent = compatibleCount.toLocaleString();
+        countEl.textContent = compatibleCount.toLocaleString() + (capped ? '+' : '');
 
         // Render type probabilities
         listEl.innerHTML = '';

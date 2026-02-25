@@ -364,7 +364,8 @@ class App {
             // Update solver info (compatible boards and type probabilities)
             this.ui.updateSolverInfo(
                 this.solverResult.compatibleCount,
-                this.solverResult.probabilities?.typeProbs
+                this.solverResult.probabilities?.typeProbs,
+                this.solverResult.capped
             );
         } else {
             this.ui.updateWinProbability(null);
