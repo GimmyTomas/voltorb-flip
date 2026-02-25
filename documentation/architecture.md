@@ -106,7 +106,7 @@ Main algorithm:
 > superseded by iterative deepening with heuristic evaluation, which provides
 > principled anytime results. The sampler code is retained for reference only.
 
-Legacy fallback for intractable boards:
+Deprecated fallback for intractable boards (no longer used):
 - Rejection sampling of random boards
 - Type weighting by acceptance count
 - Probability estimation from samples

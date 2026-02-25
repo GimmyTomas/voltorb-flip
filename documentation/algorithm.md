@@ -83,7 +83,7 @@ board came from that type.
 
 ### Implementation Note
 
-The legacy and new solvers produce identical results to machine precision (< 1e-10).
+The C++ and JavaScript solvers produce identical results to machine precision (< 1e-10).
 Both implementations:
 1. Check each compatible board for legality against ALL types with matching (n0, n2, n3)
 2. Count the board in every type it satisfies (no early break)

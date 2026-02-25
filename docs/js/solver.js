@@ -918,6 +918,99 @@ export function solve(board, maxBoards = 10000, options = {}) {
     };
 }
 
+/**
+ * Progressive solver that yields to the browser between depth iterations.
+ * Calls onProgress after each depth, onComplete when done.
+ * Returns a cancel function.
+ */
+export function solveProgressive(board, onProgress, onComplete, maxBoards = 10000, options = {}) {
+    const { timeout = 5000 } = options;
+    const startTime = performance.now();
+
+    // Phase 1 & 2: Generate boards + probabilities (sync, fast)
+    const compatibleBoards = generateCompatibleBoards(board, maxBoards);
+
+    if (compatibleBoards.length === 0) {
+        const result = {
+            suggestedPanel: null,
+            winProbability: 0,
+            probabilities: { panels: [], typeProbs: [], totalCompatible: 0 },
+            safePanels: [],
+            compatibleCount: 0,
+            computeTime: performance.now() - startTime,
+            depth: 0,
+            isExact: true,
+            reason: 'No compatible boards'
+        };
+        onComplete(result);
+        return () => {};
+    }
+
+    const probabilities = calculateProbabilities(board, compatibleBoards);
+    const safePanels = findSafePanels(board, compatibleBoards);
+
+    // Phase 3: Iterative deepening, one depth at a time via setTimeout
+    const gen = iterativeDeepening(board, compatibleBoards, { timeout });
+    let cancelled = false;
+    let lastResult = null;
+
+    function buildResult(progress) {
+        let suggestedPanel = progress.bestPanel;
+        if (safePanels.length > 0 && !suggestedPanel) {
+            let bestSafe = safePanels[0];
+            let bestScore = -1;
+            for (const pos of safePanels) {
+                const panelProb = probabilities.panels.find(p =>
+                    p.pos.row === pos.row && p.pos.col === pos.col
+                );
+                if (panelProb) {
+                    const score = panelProb.pOne * 1 + panelProb.pTwo * 2 + panelProb.pThree * 3;
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestSafe = pos;
+                    }
+                }
+            }
+            suggestedPanel = bestSafe;
+        }
+        return {
+            suggestedPanel,
+            winProbability: progress.winProbability,
+            probabilities,
+            safePanels,
+            compatibleCount: compatibleBoards.length,
+            computeTime: performance.now() - startTime,
+            depth: progress.depth,
+            isExact: progress.isExact,
+            reason: progress.reason
+        };
+    }
+
+    function runNextDepth() {
+        if (cancelled) return;
+
+        const { value, done } = gen.next();
+        if (done || !value) {
+            if (lastResult) onComplete(lastResult);
+            return;
+        }
+
+        lastResult = buildResult(value);
+        onProgress(lastResult);
+
+        if (value.isExact || (performance.now() - startTime) >= timeout) {
+            onComplete(lastResult);
+            return;
+        }
+
+        setTimeout(runNextDepth, 0);
+    }
+
+    setTimeout(runNextDepth, 0);
+
+    return () => { cancelled = true; };
+}
+
 // For backward compatibility
 export function findBestPanel(board, probabilities) {
     if (probabilities.panels.length === 0) {

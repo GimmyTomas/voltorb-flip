@@ -4,7 +4,7 @@
 import { BOARD_SIZE, PanelValue, GameResult } from './boardTypes.js';
 import { Board } from './board.js';
 import { BoardGenerator } from './generator.js';
-import { solve } from './solver.js';
+import { solve, solveProgressive } from './solver.js';
 import { UI } from './ui.js';
 
 class App {
@@ -21,6 +21,11 @@ class App {
         // Solver results
         this.solverResult = null;
         this.autoSolve = false;
+
+        // Progressive solver state
+        this.cancelSolver = null;
+        this.solverPending = false;
+        this.currentSolveId = null;
 
         // Self-play state
         this.isPlaying = false;
@@ -57,7 +62,7 @@ class App {
             this.saveHistory();
             this.board.set(row, col, value);
             if (this.autoSolve) {
-                this.runSolver();
+                this.deferSolver();
             } else {
                 this.updateDisplay();
             }
@@ -87,7 +92,7 @@ class App {
                 this.board.setColHint(index, { sum, voltorbCount: voltorbs });
             }
             if (this.autoSolve) {
-                this.runSolver();
+                this.deferSolver();
             } else {
                 this.updateDisplay();
             }
@@ -100,7 +105,7 @@ class App {
                 this.newGame();
             } else {
                 if (this.autoSolve) {
-                    this.runSolver();
+                    this.deferSolver();
                 } else {
                     this.updateDisplay();
                 }
@@ -117,7 +122,7 @@ class App {
             this.autoSolve = !this.autoSolve;
             this.ui.setAutoSolve(this.autoSolve);
             if (this.autoSolve) {
-                this.runSolver();
+                this.deferSolver();
             }
         };
 
@@ -158,7 +163,7 @@ class App {
                 this.history = [];
                 this.solverResult = null;
                 if (this.autoSolve) {
-                    this.runSolver();
+                    this.deferSolver();
                 } else {
                     this.updateDisplay();
                 }
@@ -202,7 +207,7 @@ class App {
         this.history = [];
         this.solverResult = null;
         if (this.autoSolve) {
-            this.runSolver();
+            this.deferSolver();
         } else {
             this.updateDisplay();
         }
@@ -239,7 +244,7 @@ class App {
         this.history = [];
         this.solverResult = null;
         if (this.autoSolve) {
-            this.runSolver();
+            this.deferSolver();
         } else {
             this.updateDisplay();
         }
@@ -255,7 +260,7 @@ class App {
 
         this.ui.animateTileReveal(row, col, () => {
             if (this.autoSolve) {
-                this.runSolver();
+                this.deferSolver();
             } else {
                 this.updateDisplay();
             }
@@ -277,9 +282,52 @@ class App {
         });
     }
 
-    // Run the solver
+    // Defer solver execution to avoid blocking the UI
+    deferSolver() {
+        this.updateDisplay();
+        if (this.solverPending) return;
+        this.solverPending = true;
+        setTimeout(() => {
+            this.solverPending = false;
+            this.runSolver();
+        }, 0);
+    }
+
+    // Run the solver progressively (non-blocking)
     runSolver() {
+        // Cancel any in-progress solve
+        this.cancelSolver?.();
+        this.cancelSolver = null;
+
+        const solveId = Symbol();
+        this.currentSolveId = solveId;
+
         console.log('Running solver...');
+
+        this.cancelSolver = solveProgressive(
+            this.board,
+            (result) => {
+                // onProgress: update display with intermediate result
+                if (this.currentSolveId !== solveId) return;
+                this.solverResult = result;
+                this.updateDisplay();
+            },
+            (result) => {
+                // onComplete: final result
+                if (this.currentSolveId !== solveId) return;
+                this.solverResult = result;
+                console.log(`Solver completed in ${result.computeTime.toFixed(1)}ms`);
+                console.log(`Compatible boards: ${result.compatibleCount}`);
+                console.log(`Safe panels: ${result.safePanels.length}`);
+                console.log(`Win probability: ${(result.winProbability * 100).toFixed(1)}%`);
+                this.updateDisplay();
+            }
+        );
+    }
+
+    // Run the solver synchronously (for auto-play)
+    runSolverSync() {
+        console.log('Running solver (sync)...');
         const startTime = performance.now();
 
         this.solverResult = solve(this.board);
@@ -349,7 +397,7 @@ class App {
         this.board = state.board;
         this.solverResult = state.solverResult;
         if (this.autoSolve) {
-            this.runSolver();
+            this.deferSolver();
         } else {
             this.updateDisplay();
         }
@@ -376,7 +424,7 @@ class App {
             this.history = [];
             this.solverResult = null;
             if (this.autoSolve) {
-                this.runSolver();
+                this.deferSolver();
             } else {
                 this.updateDisplay();
             }
@@ -424,8 +472,8 @@ class App {
             return;
         }
 
-        // Run solver to find best move
-        this.runSolver();
+        // Run solver synchronously to find best move
+        this.runSolverSync();
 
         if (this.solverResult?.suggestedPanel) {
             const { row, col } = this.solverResult.suggestedPanel;
