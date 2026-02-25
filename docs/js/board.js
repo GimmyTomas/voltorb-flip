@@ -231,30 +231,42 @@ export class Board {
         return true;
     }
 
-    // Hashing for memoization
+    // Hashing for memoization (integer-safe using 32-bit arithmetic)
     hash() {
         let h = 0;
-        const prime = 31;
 
         // Hash level
-        h = h * prime + this.level_;
+        h = (Math.imul(h, 31) + this.level_) | 0;
 
         // Hash hints
         for (let i = 0; i < BOARD_SIZE; i++) {
-            h = h * prime + this.rowHints_[i].sum;
-            h = h * prime + this.rowHints_[i].voltorbCount;
-            h = h * prime + this.colHints_[i].sum;
-            h = h * prime + this.colHints_[i].voltorbCount;
+            h = (Math.imul(h, 31) + this.rowHints_[i].sum) | 0;
+            h = (Math.imul(h, 31) + this.rowHints_[i].voltorbCount) | 0;
+            h = (Math.imul(h, 31) + this.colHints_[i].sum) | 0;
+            h = (Math.imul(h, 31) + this.colHints_[i].voltorbCount) | 0;
         }
 
         // Hash panels (only revealed ones matter for state)
         for (let i = 0; i < BOARD_SIZE; i++) {
             for (let j = 0; j < BOARD_SIZE; j++) {
-                h = h * prime + (this.panels_[i][j] + 2); // +2 to make all values positive
+                h = (Math.imul(h, 31) + (this.panels_[i][j] + 2)) | 0;
             }
         }
 
-        return h >>> 0; // Ensure unsigned 32-bit
+        return h >>> 0; // Convert to unsigned 32-bit
+    }
+
+    // Collision-free compact key for memoization
+    compactKey() {
+        let key = String(this.level_);
+        for (let i = 0; i < BOARD_SIZE; i++) {
+            for (let j = 0; j < BOARD_SIZE; j++) {
+                // Panel values: -1 (unknown), 0 (voltorb), 1, 2, 3
+                // Shift by +2 to get single digits 1-5, unknown becomes 1
+                key += String(this.panels_[i][j] + 2);
+            }
+        }
+        return key;
     }
 
     // Recalculate hints from fully revealed panel state

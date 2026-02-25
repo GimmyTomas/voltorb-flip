@@ -508,9 +508,8 @@ class SearchState {
  */
 function isWon(state) {
     const totalBoards = state.boardsByType.reduce((sum, boards) => sum + boards.length, 0);
-    const shouldLog = totalBoards <= 30;
 
-    // First, count unknown panels and boards per type
+    // First, count unknown panels
     let unknownCount = 0;
     for (let i = 0; i < BOARD_SIZE; i++) {
         for (let j = 0; j < BOARD_SIZE; j++) {
@@ -521,56 +520,20 @@ function isWon(state) {
     }
 
     if (totalBoards === 0) {
-        if (shouldLog) {
-            console.log(`[DEBUG] isWon: WARNING - no compatible boards! unknownCount=${unknownCount}`);
-        }
-        // No compatible boards is an error state - should not happen
-        // Return false to be safe (assume not won)
-        return unknownCount === 0; // Only won if no unknowns remain
+        return unknownCount === 0;
     }
 
-    const unrevealed = [];
     for (let i = 0; i < BOARD_SIZE; i++) {
         for (let j = 0; j < BOARD_SIZE; j++) {
             if (state.board.get(i, j) === PanelValue.Unknown) {
-                const pos = { row: i, col: j };
-                let hasMultiplier = false;
                 // Check if any compatible board has a multiplier here
                 for (const boards of state.boardsByType) {
                     for (const b of boards) {
-                        if (isMultiplier(b.get(pos.row, pos.col))) {
-                            hasMultiplier = true;
-                            unrevealed.push(`(${i},${j})`);
-                            break;
-                        }
-                    }
-                    if (hasMultiplier) break;
-                }
-            }
-        }
-    }
-    if (unrevealed.length > 0) {
-        if (shouldLog) {
-            console.log(`[DEBUG] isWon=false, unrevealed multipliers at: ${unrevealed.join(', ')}, totalBoards=${totalBoards}, unknownCount=${unknownCount}`);
-        }
-        return false;
-    }
-    if (shouldLog) {
-        console.log(`[DEBUG] isWon=true (no unrevealed multipliers), totalBoards=${totalBoards}, unknownCount=${unknownCount}`);
-        // Log a sample board to verify multiplier positions
-        for (const boards of state.boardsByType) {
-            if (boards.length > 0) {
-                const b = boards[0];
-                let mults = [];
-                for (let i = 0; i < BOARD_SIZE; i++) {
-                    for (let j = 0; j < BOARD_SIZE; j++) {
                         if (isMultiplier(b.get(i, j))) {
-                            mults.push(`(${i},${j})=${b.get(i, j)}`);
+                            return false;
                         }
                     }
                 }
-                console.log(`  Sample board multipliers: ${mults.join(', ')}`);
-                break;
             }
         }
     }
@@ -754,21 +717,6 @@ function depthLimitedSearch(state, depthLimit, memo, nodesRef, startTime, timeou
 
     // Win check
     if (isWon(state)) {
-        const totalBoards = state.totalCompatible();
-        if (totalBoards <= 30) {
-            console.log(`[DEBUG] isWon=true at depth=${depthLimit}, totalBoards=${totalBoards}`);
-            // Log revealed panels
-            let revealed = [];
-            for (let i = 0; i < BOARD_SIZE; i++) {
-                for (let j = 0; j < BOARD_SIZE; j++) {
-                    const v = state.board.get(i, j);
-                    if (v !== PanelValue.Unknown) {
-                        revealed.push(`(${i},${j})=${v}`);
-                    }
-                }
-            }
-            console.log(`  Revealed: ${revealed.join(', ')}`);
-        }
         return { bestPanel: null, winProb: 1.0, fullyExplored: true };
     }
 
@@ -778,8 +726,7 @@ function depthLimitedSearch(state, depthLimit, memo, nodesRef, startTime, timeou
     }
 
     // Memoization check
-    const hash = state.board.hash();
-    const memoKey = `${hash}_${depthLimit}`;
+    const memoKey = state.board.compactKey() + '_' + depthLimit;
     if (memo.has(memoKey)) {
         const cached = memo.get(memoKey);
         return { bestPanel: cached.bestPanel, winProb: cached.winProb, fullyExplored: cached.fullyExplored };
@@ -788,29 +735,19 @@ function depthLimitedSearch(state, depthLimit, memo, nodesRef, startTime, timeou
     // Free panel check
     const freePanel = findFreePanel(state);
     if (freePanel) {
-        // Log at initial state (22 boards is the specific case we're debugging)
-        const isInitialState = state.totalCompatible() === 22;
-        const shouldLog = isInitialState || depthLimit >= 10;
-        if (shouldLog) console.log(`[DEBUG] Free panel found: (${freePanel.row},${freePanel.col}) at depth=${depthLimit}, totalBoards=${state.totalCompatible()}`);
         let winProb = 0;
         let fullyExplored = true;
-        let pSum = 0;
 
         for (let value = 1; value <= 3; value++) {
             const pValue = probabilityOf(state, freePanel, value);
-            pSum += pValue;
             if (pValue <= 0) continue;
 
             const nextState = revealPanel(state, freePanel, value);
-            const childBoardCount = nextState.totalCompatible();
             const child = depthLimitedSearch(nextState, depthLimit, memo, nodesRef, startTime, timeout);
-
-            if (shouldLog) console.log(`  Free (${freePanel.row},${freePanel.col}) val=${value}: P=${pValue.toFixed(4)}, W=${child.winProb.toFixed(4)}, exact=${child.fullyExplored}, contribution=${(pValue * child.winProb).toFixed(4)}, childBoards=${childBoardCount}`);
 
             winProb += pValue * child.winProb;
             if (!child.fullyExplored) fullyExplored = false;
         }
-        if (shouldLog) console.log(`  Free panel total: pSum=${pSum.toFixed(4)}, winProb=${winProb.toFixed(4)}, fullyExplored=${fullyExplored}`);
 
         memo.set(memoKey, { bestPanel: freePanel, winProb, fullyExplored });
         return { bestPanel: freePanel, winProb, fullyExplored };
@@ -835,8 +772,6 @@ function depthLimitedSearch(state, depthLimit, memo, nodesRef, startTime, timeou
         let panelWinProb = 0;
         let panelFullyExplored = true;
 
-        const shouldLogRisky = state.totalCompatible() <= 30;
-        if (shouldLogRisky) console.log(`[DEBUG] Evaluating risky panel (${pos.row},${pos.col}) at depth=${depthLimit}, totalBoards=${state.totalCompatible()}`);
         for (let value = 1; value <= 3; value++) {
             const pValue = probabilityOf(state, pos, value);
             if (pValue <= 0) continue;
@@ -844,12 +779,9 @@ function depthLimitedSearch(state, depthLimit, memo, nodesRef, startTime, timeou
             const nextState = revealPanel(state, pos, value);
             const child = depthLimitedSearch(nextState, depthLimit - 1, memo, nodesRef, startTime, timeout);
 
-            if (shouldLogRisky) console.log(`  Risky (${pos.row},${pos.col}) val=${value}: P=${pValue.toFixed(3)}, W=${child.winProb.toFixed(3)}, exact=${child.fullyExplored}`);
-
             panelWinProb += pValue * child.winProb;
             if (!child.fullyExplored) panelFullyExplored = false;
         }
-        if (shouldLogRisky) console.log(`  Risky panel total: winProb=${panelWinProb.toFixed(3)}, fullyExplored=${panelFullyExplored}`);
 
         if (!panelFullyExplored) allFullyExplored = false;
 
@@ -894,9 +826,7 @@ export function* iterativeDeepening(board, compatibleBoards, options = {}) {
         // from shallower searches, effectively limiting all searches to depth 1.
         const memo = new Map();
 
-        console.log(`[DEBUG] ===== Starting iterative deepening depth=${depth} =====`);
         const result = depthLimitedSearch(initialState, depth, memo, nodesRef, startTime, timeout);
-        console.log(`[DEBUG] ===== Depth ${depth} result: winProb=${result.winProb.toFixed(3)}, exact=${result.fullyExplored}, bestPanel=(${result.bestPanel?.row},${result.bestPanel?.col}) =====`);
 
         const elapsed = Date.now() - startTime;
 
