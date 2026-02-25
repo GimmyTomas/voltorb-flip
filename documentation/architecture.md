@@ -95,9 +95,10 @@ Output:
 ### Solver
 Main algorithm:
 1. Generate compatible boards
-2. Find free panels (guaranteed safe)
-3. Iterative deepening minimax with memoization
-4. Timeout handling → return best depth-limited result
+2. Prune useless panels (no multiplier potential — can only be 1 or Voltorb)
+3. Find free panels (guaranteed safe with multiplier potential)
+4. Iterative deepening minimax with memoization
+5. Timeout handling → return best depth-limited result
 
 ## Sampler (sampler.hpp) — Deprecated
 

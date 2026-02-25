@@ -16,7 +16,7 @@ f(S) = max_p { E[f(S') | flip panel p] }   otherwise
 
 Where:
 - S is the current board state (revealed panels + hints)
-- p ranges over unrevealed panels
+- p ranges over unrevealed panels **with multiplier potential** (panels where some compatible board has a 2 or 3)
 - S' is the state after revealing panel p
 - E[...] denotes expected value over possible revealed values
 
@@ -72,7 +72,8 @@ def depth_limited_search(state, depth_limit):
     best_win_prob = 0
     all_explored = True
 
-    for panel in ordered_unknown_panels(state):
+    # Only consider panels with multiplier potential (skip useless panels)
+    for panel in ordered_unknown_panels(state):  # filtered to multiplier-potential only
         # Upper-bound pruning
         if survival_prob(panel) <= best_win_prob:
             continue
@@ -107,10 +108,14 @@ def depth_limited_search(state, depth_limit):
 
 When the depth limit is reached, the solver estimates win probability using:
 
-1. Count remaining multipliers to reveal
-2. Identify risky panels (non-zero voltorb probability)
+1. Count remaining multipliers to reveal (only panels with multiplier potential)
+2. Identify risky panels with multiplier potential (non-zero voltorb probability)
 3. Sort panels by risk (lowest voltorb probability first)
 4. Estimate: product of survival probabilities for the N safest panels
+
+Panels without multiplier potential (can only be 1 or Voltorb) are excluded from
+both the multiplier count and the risky panel list, since flipping them never
+contributes to winning.
 
 ```python
 def heuristic_eval(state):
@@ -121,7 +126,9 @@ def heuristic_eval(state):
     if multipliers_needed == 0:
         return 1.0
 
-    voltorb_probs = [P(panel=0|state) for panel in risky_panels(state)]
+    # Only consider panels that could actually be a multiplier
+    voltorb_probs = [P(panel=0|state) for panel in risky_panels(state)
+                     if has_multiplier_potential(state, panel)]
     voltorb_probs.sort()
 
     survival_product = 1.0
@@ -171,8 +178,18 @@ For each panel, the maximum win probability is `1 - P(voltorb)`:
 
 Identify panels that are safe in ALL compatible boards:
 - These can be flipped without risk
+- Only considered if they have multiplier potential (see below)
 - Always suggest free panels when available
 - Recursive search continues after revealing
+
+#### 6. Useless Panel Pruning
+
+Skip panels where no compatible board has a multiplier (2 or 3):
+- Such panels can only reveal a 1 (no progress) or Voltorb (game over)
+- Flipping them is never optimal — they add risk without contributing to winning
+- Checked via `hasMultiplierPotential()` which scans compatible boards at that position
+- Applied in free panel detection, risky panel ordering, and heuristic evaluation
+- When all unknowns are useless, `isWon()` returns true (all multipliers already revealed)
 
 ## Performance Characteristics
 

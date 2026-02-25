@@ -109,10 +109,27 @@ The optimal panel to flip is the one achieving the maximum in the recursive defi
 
 ### Free Panel Optimization
 
-If any panel is **guaranteed safe** (non-Voltorb in all compatible boards), flip it immediately. This:
+If any panel is **guaranteed safe** (non-Voltorb in all compatible boards) **and** has multiplier potential (some compatible board has a 2 or 3 there), flip it immediately. This:
 - Provides information without risk
 - Avoids expensive minimax computation
 - Is always optimal (or tied for optimal)
+
+Safe panels without multiplier potential are "useless" — see below.
+
+### Useless Panel Pruning
+
+A panel is **useless** if no compatible board has a multiplier (2 or 3) at that position. Flipping such a panel can only reveal a 1 (no progress toward winning) or a Voltorb (game over). The solver never explores or recommends useless panels.
+
+This is checked via `hasMultiplierPotential(state, pos)`, which returns true if any compatible board has a 2 or 3 at the position. The filter is applied in three places:
+
+1. **Free panel detection**: Only return a free panel if it has multiplier potential
+2. **Risky panel ordering**: Exclude useless panels from the candidate list
+3. **Heuristic evaluation**: Only count panels with multiplier potential when estimating survival probability
+
+**Edge cases:**
+- If all remaining unknowns are useless, `isWon()` returns true (all multipliers already revealed), so the empty panel list is never reached
+- If all free panels are useless, `findFreePanel` returns null and the search proceeds to risky panels with multiplier potential
+- If all risky panels are useless, the heuristic returns 1.0 (correct, since remaining multipliers must all be safe)
 
 ## Iterative Deepening
 
@@ -130,16 +147,19 @@ At each depth, the solver performs bounded expectimax:
 - **Win check**: Return 1.0 if all multipliers revealed
 - **Depth limit reached**: Return heuristic evaluation (see below)
 - **Memo lookup**: Return cached result if available
-- **Free panels**: Reveal without spending depth (always optimal)
-- **Risky panels**: Loop over panels with upper-bound pruning, recurse at depthLimit-1
+- **Free panels**: Reveal without spending depth (must have multiplier potential)
+- **Risky panels**: Loop over panels with multiplier potential, upper-bound pruning, recurse at depthLimit-1
 
 ### Heuristic Evaluation
 
 At the depth limit, win probability is estimated by:
-1. Count remaining multipliers to reveal
-2. Collect Voltorb probability of each risky panel
+1. Count remaining multipliers to reveal (panels with multiplier potential)
+2. Collect Voltorb probability of each risky panel with multiplier potential
 3. Sort by risk (lowest Voltorb probability first)
 4. Return product of survival probabilities for the N safest panels
+
+Panels without multiplier potential are excluded from both counts, since they
+cannot contribute to winning and flipping them is never beneficial.
 
 ### Timeout Handling
 
@@ -184,9 +204,10 @@ Board states are hashed for cache lookup. Two strategies are used:
 
 ### Early Termination
 
-1. **Free panels**: Skip full minimax when safe panels exist
-2. **Alpha-beta**: Prune branches that can't improve best found
-3. **Timeout**: Return best result from current depth
+1. **Free panels**: Skip full minimax when safe panels with multiplier potential exist
+2. **Useless panel pruning**: Skip panels that can only be 1 or Voltorb
+3. **Alpha-beta**: Prune branches that can't improve best found
+4. **Timeout**: Return best result from current depth
 
 ### Parallel Enumeration
 
