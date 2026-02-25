@@ -198,6 +198,12 @@ private:
     bool isWon(const SearchState& state) const;
 
     /**
+     * Check if any compatible board has a multiplier (2 or 3) at this position.
+     * Panels without multiplier potential are useless to flip.
+     */
+    bool hasMultiplierPotential(const SearchState& state, Position pos) const;
+
+    /**
      * Find a free (guaranteed safe) panel.
      */
     std::optional<Position> findFreePanel(const SearchState& state) const;

@@ -350,6 +350,7 @@ double Solver::heuristicEval(const SearchState& state) {
         for (size_t j = 0; j < BOARD_SIZE; j++) {
             Position pos{static_cast<uint8_t>(i), static_cast<uint8_t>(j)};
             if (state.board.get(pos) != PanelValue::Unknown) continue;
+            if (!hasMultiplierPotential(state, pos)) continue;
 
             double pVoltorb = probabilityOf(state, pos, PanelValue::Voltorb);
             if (pVoltorb > 0) {
@@ -397,6 +398,17 @@ bool Solver::isWon(const SearchState& state) const {
     return true;
 }
 
+bool Solver::hasMultiplierPotential(const SearchState& state, Position pos) const {
+    for (BoardTypeIndex type = 0; type < NUM_TYPES_PER_LEVEL; type++) {
+        for (size_t idx : state.indicesPerType[type]) {
+            if (isMultiplier(allBoards_[idx].get(pos))) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 std::optional<Position> Solver::findFreePanel(const SearchState& state) const {
     for (size_t i = 0; i < BOARD_SIZE; i++) {
         for (size_t j = 0; j < BOARD_SIZE; j++) {
@@ -417,7 +429,7 @@ std::optional<Position> Solver::findFreePanel(const SearchState& state) const {
                 }
             }
 
-            if (isFree) {
+            if (isFree && hasMultiplierPotential(state, pos)) {
                 return pos;
             }
         }
@@ -433,6 +445,7 @@ std::vector<Position> Solver::getOrderedUnknownPanels(const SearchState& state) 
         for (size_t j = 0; j < BOARD_SIZE; j++) {
             Position pos{static_cast<uint8_t>(i), static_cast<uint8_t>(j)};
             if (state.board.get(pos) == PanelValue::Unknown) {
+                if (!hasMultiplierPotential(state, pos)) continue;
                 double pVoltorb = probabilityOf(state, pos, PanelValue::Voltorb);
                 panelsWithProb.emplace_back(pos, pVoltorb);
             }

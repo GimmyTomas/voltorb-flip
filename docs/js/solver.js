@@ -541,6 +541,21 @@ function isWon(state) {
 }
 
 /**
+ * Check if any compatible board has a multiplier (2 or 3) at this position.
+ * Panels without multiplier potential are useless to flip.
+ */
+function hasMultiplierPotential(state, pos) {
+    for (const boards of state.boardsByType) {
+        for (const b of boards) {
+            if (isMultiplier(b.get(pos.row, pos.col))) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+/**
  * Find a free (guaranteed safe) panel.
  */
 function findFreePanel(state) {
@@ -559,7 +574,7 @@ function findFreePanel(state) {
                 }
             }
 
-            if (isFree) return pos;
+            if (isFree && hasMultiplierPotential(state, pos)) return pos;
         }
     }
     return null;
@@ -575,6 +590,7 @@ function getOrderedUnknownPanels(state) {
         for (let j = 0; j < BOARD_SIZE; j++) {
             if (state.board.get(i, j) === PanelValue.Unknown) {
                 const pos = { row: i, col: j };
+                if (!hasMultiplierPotential(state, pos)) continue;
                 const pVoltorb = probabilityOf(state, pos, PanelValue.Voltorb);
                 panels.push({ pos, pVoltorb });
             }
@@ -684,6 +700,7 @@ function heuristicEval(state) {
         for (let j = 0; j < BOARD_SIZE; j++) {
             if (state.board.get(i, j) !== PanelValue.Unknown) continue;
             const pos = { row: i, col: j };
+            if (!hasMultiplierPotential(state, pos)) continue;
             const pVoltorb = probabilityOf(state, pos, PanelValue.Voltorb);
             if (pVoltorb > 0) {
                 voltorbProbs.push(pVoltorb);
