@@ -273,7 +273,10 @@ export class UI {
                             // Add probability text on hover
                             const probText = document.createElement('div');
                             probText.className = 'prob-text';
-                            probText.textContent = `${Math.round(prob.pVoltorb * 100)}%`;
+                            const voltorbIcon = document.createElement('span');
+                            voltorbIcon.className = 'voltorb-icon';
+                            probText.appendChild(voltorbIcon);
+                            probText.appendChild(document.createTextNode(`${Math.round(prob.pVoltorb * 100)}%`));
                             tile.appendChild(probText);
                         }
                     }
