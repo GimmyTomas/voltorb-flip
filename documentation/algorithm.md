@@ -114,31 +114,43 @@ If any panel is **guaranteed safe** (non-Voltorb in all compatible boards), flip
 - Avoids expensive minimax computation
 - Is always optimal (or tied for optimal)
 
-## Monte Carlo Fallback
+## Iterative Deepening
 
-When exhaustive enumeration is too slow (many compatible boards), the solver falls back to Monte Carlo sampling:
+The full minimax tree can be intractable for complex boards. The solver uses **iterative deepening** to provide anytime results:
 
-1. **Sample boards** weighted by type probability
-2. **Estimate probabilities** from the sample
-3. **Apply same decision logic** with approximate values
+1. Start with depth limit = 1
+2. Run depth-limited minimax with a fresh memoization table
+3. Yield the result (depth N, approximate if depth limit was hit)
+4. Increment depth limit and repeat
+5. Stop when: exact solution found, timeout reached, or max depth reached
 
-### Sampling Algorithm
+### Depth-Limited Search
 
-```
-for i in 1..N:
-    type = sample_type(weighted by acceptance_count)
-    board = generate_random_board(type)
-    if matches_hints(board) and is_legal(board):
-        samples.append(board)
-```
+At each depth, the solver performs bounded expectimax:
+- **Win check**: Return 1.0 if all multipliers revealed
+- **Depth limit reached**: Return heuristic evaluation (see below)
+- **Memo lookup**: Return cached result if available
+- **Free panels**: Reveal without spending depth (always optimal)
+- **Risky panels**: Loop over panels with upper-bound pruning, recurse at depthLimit-1
+
+### Heuristic Evaluation
+
+At the depth limit, win probability is estimated by:
+1. Count remaining multipliers to reveal
+2. Collect Voltorb probability of each risky panel
+3. Sort by risk (lowest Voltorb probability first)
+4. Return product of survival probabilities for the N safest panels
 
 ### Timeout Handling
 
-The solver monitors elapsed time and switches to Monte Carlo when:
-- Time exceeds configured timeout
-- Compatible board count exceeds threshold
+The solver monitors elapsed time and returns the best depth-limited result when:
+- Time exceeds configured timeout (5s for JS, 10s for C++)
 
-Results are marked as "approximate" when sampling was used.
+Results are marked as "approximate" when the full tree was not explored.
+
+### Monte Carlo Fallback (Deprecated)
+
+The previous Monte Carlo sampling fallback has been superseded by iterative deepening with heuristic evaluation. The iterative deepening approach provides principled anytime results that improve monotonically with depth, unlike Monte Carlo which gave inconsistent estimates.
 
 ## Complexity Analysis
 
@@ -148,26 +160,33 @@ Results are marked as "approximate" when sampling was used.
 - **Recursion depth**: Up to 25 (one per panel)
 - **Memoization**: Essential for tractable computation
 
-### Monte Carlo
+### Iterative Deepening
 
-- **Fixed sample size**: e.g., 10,000 boards
-- **Per-sample cost**: O(1) generation, O(25) compatibility check
-- **Total**: O(sample_size × board_size)
+- **Per-depth cost**: Bounded by depth limit and memoization
+- **Heuristic evaluation**: O(unknown panels) at leaf nodes
+- **Anytime property**: Each depth iteration improves on the previous
 
 ## Implementation Details
 
 ### Memoization
 
-Board states are hashed for cache lookup. The hash includes:
-- Level
-- All row/column hints
-- All panel values (revealed or unknown)
+Board states are hashed for cache lookup. Two strategies are used:
+
+**C++ (Zobrist hashing + transposition table):**
+- Incremental XOR hash updates when revealing panels (O(1) per update)
+- Fixed-size power-of-2 transposition table with full hash verification
+- Depth tracking: only use cached result if stored depth >= current depth
+
+**JavaScript (`compactKey()` + Map):**
+- String key = level + 25 panel digits (each panel value shifted to single digit)
+- Collision-free by construction
+- Fresh `Map` created for each depth iteration to prevent stale results
 
 ### Early Termination
 
 1. **Free panels**: Skip full minimax when safe panels exist
 2. **Alpha-beta**: Prune branches that can't improve best found
-3. **Timeout**: Switch to Monte Carlo fallback
+3. **Timeout**: Return best result from current depth
 
 ### Parallel Enumeration
 
@@ -179,4 +198,4 @@ Board generation can be parallelized across:
 
 - Bayesian decision theory
 - Minimax game tree search
-- Monte Carlo tree search (MCTS) for approximation
+- Iterative deepening depth-first search (IDDFS)

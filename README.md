@@ -7,7 +7,7 @@ An optimal solver for the Voltorb Flip minigame from Pokémon HeartGold & SoulSi
 - **Optimal play**: Finds the panel that maximizes win probability
 - **Bayesian inference**: Accurately models uncertainty across board types
 - **Fast for most boards**: Uses memoization and early termination
-- **Monte Carlo fallback**: Approximates solutions for complex boards
+- **Iterative deepening**: Anytime results with increasing search depth
 - **Interactive assistant**: Use alongside real gameplay
 - **Self-play testing**: Validate solver performance
 
@@ -33,9 +33,9 @@ cmake --build .
 3. **Recursive minimax**: Compute expected win probability for each panel choice
 4. **Select optimal panel**: Flip the panel maximizing win probability
 
-For boards with too many compatible configurations, the solver falls back to Monte Carlo sampling for approximate results.
+For complex boards, the solver uses iterative deepening with a timeout, yielding approximate results that improve with deeper search.
 
-See [docs/algorithm.md](docs/algorithm.md) for details.
+See [documentation/algorithm.md](documentation/algorithm.md) for details.
 
 ## Usage
 
@@ -79,20 +79,20 @@ voltorb-flip/
 
 ## Documentation
 
-- [Game Rules](docs/game-rules.md) - Complete Voltorb Flip rules
-- [Algorithm](docs/algorithm.md) - Bayesian inference and minimax
-- [Architecture](docs/architecture.md) - Code organization
-- [Building](docs/building.md) - Build instructions
+- [Game Rules](documentation/game-rules.md) - Complete Voltorb Flip rules
+- [Algorithm](documentation/algorithm.md) - Bayesian inference and minimax
+- [Architecture](documentation/architecture.md) - Code organization
+- [Building](documentation/building.md) - Build instructions
 
 ## Performance
 
-| Level | Exhaustive | Monte Carlo |
-|-------|------------|-------------|
-| 1-3   | < 100ms    | N/A         |
-| 4-6   | 100ms-5s   | Fallback    |
-| 7-8   | 1s-timeout | ~500ms      |
+| Level | Typical Time | Result |
+|-------|-------------|--------|
+| 1-3   | < 100ms     | Exact  |
+| 4-6   | 100ms-5s    | Exact or depth-limited |
+| 7-8   | 1s-5s       | Depth-limited, improving |
 
-The solver uses a 5-second timeout by default and falls back to Monte Carlo sampling when exhaustive search is too slow.
+The solver uses a 5-second timeout by default. Iterative deepening returns the best result found within the time limit, with deeper searches yielding more accurate results.
 
 ## Requirements
 

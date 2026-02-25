@@ -82,8 +82,8 @@ Complete probability state for solver decisions.
 ### SolverOptions
 Configuration:
 - `timeout`: Max computation time
-- `maxCompatibleBoards`: Fallback threshold
-- `sampleSize`: Monte Carlo sample count
+- `maxDepth`: Maximum iterative deepening depth
+- `maxCompatibleBoards`: Board enumeration cap
 
 ### SolverResult
 Output:
@@ -94,15 +94,19 @@ Output:
 
 ### Solver
 Main algorithm:
-1. Generate compatible boards (or sample if too many)
+1. Generate compatible boards
 2. Find free panels (guaranteed safe)
-3. Recursive minimax with memoization
-4. Timeout handling → Monte Carlo fallback
+3. Iterative deepening minimax with memoization
+4. Timeout handling → return best depth-limited result
 
-## Sampler (sampler.hpp)
+## Sampler (sampler.hpp) — Deprecated
 
 ### MonteCarloSampler
-Fallback for intractable boards:
+> **Note:** The Monte Carlo sampler is no longer used by the solver. It has been
+> superseded by iterative deepening with heuristic evaluation, which provides
+> principled anytime results. The sampler code is retained for reference only.
+
+Legacy fallback for intractable boards:
 - Rejection sampling of random boards
 - Type weighting by acceptance count
 - Probability estimation from samples
@@ -156,12 +160,11 @@ User Input → GameSession
 
 ### Memory
 - Compatible boards can be large (millions)
-- Memoization cache grows with search depth
-- Monte Carlo uses fixed-size sample buffer
+- Memoization cache grows with search depth (fresh per depth iteration)
 
 ### Time
 - Exhaustive search: exponential in unknown panels
-- Monte Carlo: linear in sample size
+- Iterative deepening: bounded by depth limit and timeout
 - Free panel detection: early termination
 
 ### Parallelism

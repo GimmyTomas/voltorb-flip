@@ -150,6 +150,10 @@ Fixed-size power-of-2 table with:
 - Depth tracking (only use cached result if depth >= current)
 - Always-replace policy (simple and effective for iterative deepening)
 
+**Note:** Zobrist hashing and the transposition table are specific to the C++ implementation.
+The JavaScript web solver uses `compactKey()` (level + 25 panel digits) as a collision-free
+string key stored in a standard `Map`, with a fresh Map created per depth iteration.
+
 #### 3. Move Ordering
 
 Sort unknown panels by voltorb probability (lowest first):
@@ -180,7 +184,10 @@ Identify panels that are safe in ALL compatible boards:
   - Pruning (skips suboptimal branches)
   - Move ordering (finds good moves early)
 
-### Observed Performance (C++)
+### Observed Performance (C++ only)
+
+> The following benchmarks are from the C++ implementation. JavaScript performance
+> varies by browser but is generally comparable for most boards.
 
 | Level | Unknown Panels | Typical Time to Exact |
 |-------|----------------|----------------------|

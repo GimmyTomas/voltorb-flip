@@ -28,7 +28,8 @@
                 <p>
                     This solver uses <strong>Bayesian inference</strong> and <strong>constraint enumeration</strong>
                     to calculate the exact probability that each hidden panel contains a Voltorb,
-                    then suggests the optimal move based on these probabilities.
+                    then uses <strong>iterative deepening minimax</strong> (expectimax) to find the
+                    move that maximizes the probability of winning the game.
                 </p>
             </section>
 
@@ -270,6 +271,31 @@ P(T8 | board) = 23.6%
                     (revealing all multipliers without hitting a Voltorb).
                 </p>
 
+                <h3>Win Probability Definition</h3>
+                <p>
+                    The optimal win probability for a board state <em>S</em> is defined recursively:
+                </p>
+                <div class="formula-box">
+                    <div class="formula">
+                        f(S) = 1 &emsp; if all multipliers (2s and 3s) are revealed
+                    </div>
+                    <div class="formula">
+                        f(S) = 0 &emsp; if a Voltorb has been revealed
+                    </div>
+                    <div class="formula">
+                        f(S) = max<sub>panel</sub> { &Sigma;<sub>v</sub> P(panel=v | S) &times; f(S&prime;) } &emsp; otherwise
+                    </div>
+                    <div class="formula-desc">
+                        where S&prime; is the state after revealing the panel as value v,
+                        and v ranges over {1, 2, 3} (Voltorb outcomes contribute f=0)
+                    </div>
+                </div>
+                <p>
+                    The optimal move is the panel that achieves this maximum. This is an
+                    <strong>expectimax</strong> formulation: the solver maximizes over panel choices
+                    and takes expectations over the random revealed value.
+                </p>
+
                 <h3>Free Panel Detection</h3>
                 <p>
                     A panel is <strong>"free"</strong> (guaranteed safe) if it is never a Voltorb
@@ -288,45 +314,151 @@ P(T8 | board) = 23.6%
     <span class="code-keyword">return</span> freePanels
                 </div>
 
-                <h3>When No Free Panels Exist</h3>
+                <h3>Iterative Deepening</h3>
                 <p>
-                    When all remaining panels have some Voltorb risk, the solver uses a heuristic:
+                    Computing the exact win probability requires exploring the full game tree,
+                    which can be intractable for complex boards. The solver uses
+                    <strong>iterative deepening</strong> to provide anytime results that improve
+                    with more computation:
                 </p>
-                <ol>
-                    <li>Calculate Voltorb probability for each panel</li>
-                    <li>Prefer panels with lower Voltorb probability</li>
-                    <li>Among similar probabilities, prefer panels more likely to be multipliers</li>
-                </ol>
                 <div class="code-block">
-<span class="code-comment">// Heuristic score (lower is better)</span>
-score = P(Voltorb) - 0.01 &times; (P(Two) + P(Three))
+<span class="code-keyword">function</span> iterativeDeepening(board, timeout):
+    <span class="code-keyword">for</span> depth = 1 <span class="code-keyword">to</span> maxDepth:
+        memo = <span class="code-keyword">new</span> Map()  <span class="code-comment">// fresh memo each depth</span>
+        result = depthLimitedSearch(board, depth, memo)
+        <span class="code-keyword">yield</span> result
+        <span class="code-keyword">if</span> result.isExact <span class="code-keyword">or</span> elapsed &gt; timeout:
+            <span class="code-keyword">break</span>
+                </div>
+                <p>
+                    Each depth iteration creates a <strong>fresh memoization table</strong>. This
+                    prevents stale results from shallower searches from limiting deeper explorations.
+                    The solver yields progress at each depth, so the UI can display the best result
+                    found so far.
+                </p>
+
+                <h3>Depth-Limited Search</h3>
+                <p>
+                    At each depth, the solver performs a bounded expectimax search:
+                </p>
+                <div class="code-block">
+<span class="code-keyword">function</span> depthLimitedSearch(state, depthLimit, memo):
+    <span class="code-keyword">if</span> isWon(state): <span class="code-keyword">return</span> (winProb=1.0, exact=<span class="code-keyword">true</span>)
+    <span class="code-keyword">if</span> depthLimit == 0: <span class="code-keyword">return</span> (winProb=heuristic(state), exact=<span class="code-keyword">false</span>)
+    <span class="code-keyword">if</span> memo.has(state): <span class="code-keyword">return</span> memo.get(state)
+
+    <span class="code-comment">// Free panels: recurse without spending depth</span>
+    <span class="code-keyword">if</span> freePanel exists:
+        reveal freePanel, recurse at same depthLimit
+
+    bestWinProb = 0
+    <span class="code-keyword">for</span> panel <span class="code-keyword">in</span> orderedUnknownPanels(state):
+        <span class="code-comment">// Upper-bound pruning</span>
+        <span class="code-keyword">if</span> (1 - P(Voltorb)) &le; bestWinProb: <span class="code-keyword">continue</span>
+
+        expected = &Sigma;<sub>v&isin;{1,2,3}</sub> P(panel=v) &times; depthLimitedSearch(reveal(state,panel,v), depthLimit-1)
+        bestWinProb = max(bestWinProb, expected)
+
+    memo.set(state, result)
+    <span class="code-keyword">return</span> result
                 </div>
 
-                <h3>Win Probability Estimation</h3>
+                <h3>Heuristic Evaluation</h3>
                 <p>
-                    The solver estimates win probability by considering:
+                    When the depth limit is reached, the solver estimates win probability
+                    instead of returning an arbitrary value:
+                </p>
+                <ol>
+                    <li>Count the multipliers (2s and 3s) still needing to be revealed</li>
+                    <li>Collect the Voltorb probability of each risky panel</li>
+                    <li>Sort risky panels by safety (lowest Voltorb probability first)</li>
+                    <li>Return the product of survival probabilities for the N safest panels,
+                        where N is the number of multipliers still needed</li>
+                </ol>
+                <div class="code-block">
+<span class="code-keyword">function</span> heuristicEval(state):
+    multipliersNeeded = countRemainingMultipliers(state)
+    <span class="code-keyword">if</span> multipliersNeeded == 0: <span class="code-keyword">return</span> 1.0
+
+    voltorbProbs = [P(Voltorb) <span class="code-keyword">for</span> each risky panel]
+    voltorbProbs.sort()  <span class="code-comment">// lowest risk first</span>
+
+    survival = 1.0
+    <span class="code-keyword">for</span> i = 0 <span class="code-keyword">to</span> min(voltorbProbs.length, multipliersNeeded):
+        survival &times;= (1 - voltorbProbs[i])
+    <span class="code-keyword">return</span> survival
+                </div>
+
+                <h3>Memoization</h3>
+                <p>
+                    The search space is a DAG (different move orders can reach the same state),
+                    so memoization is essential. The JavaScript solver uses <code>compactKey()</code>
+                    to produce a collision-free string key:
+                </p>
+                <div class="code-block">
+<span class="code-keyword">function</span> compactKey():
+    key = level + 25 panel digits  <span class="code-comment">// each panel value shifted to single digit</span>
+    <span class="code-keyword">return</span> key  <span class="code-comment">// unique string, used as Map key</span>
+                </div>
+                <p>
+                    A fresh <code>Map</code> is created for each depth iteration. This avoids
+                    stale entries from shallower searches corrupting deeper ones.
+                </p>
+
+                <h3>Optimizations</h3>
+                <ul>
+                    <li><strong>Move ordering</strong>: Panels are sorted by Voltorb probability
+                        (safest first), so good moves are evaluated early and pruning is more effective</li>
+                    <li><strong>Upper-bound pruning</strong>: A panel's best possible win probability
+                        is <code>1 - P(Voltorb)</code>. If this is &le; the current best, the panel
+                        is skipped entirely</li>
+                    <li><strong>Free panel short-circuit</strong>: Guaranteed-safe panels are revealed
+                        immediately without spending search depth, since they are always optimal</li>
+                </ul>
+
+                <h3>Understanding Results</h3>
+                <p>
+                    The solver reports a <strong>win probability</strong> and a
+                    <strong>search depth</strong> for each recommendation:
                 </p>
                 <ul>
-                    <li>If free panels with multipliers exist: high probability (~70-95%)</li>
-                    <li>If all panels are safe: 100% win</li>
-                    <li>Otherwise: estimate based on survival probability and expected future moves</li>
+                    <li><strong>"Exact"</strong> &mdash; the full game tree was explored; the win
+                        probability is provably correct and the suggested move is provably optimal</li>
+                    <li><strong>"Depth N (approximate)"</strong> &mdash; the solver searched N moves
+                        ahead and used heuristic evaluation at the frontier; the result is a
+                        lower bound on the true win probability and improves with deeper search</li>
                 </ul>
+                <p>
+                    The default timeout is 5 seconds. For most boards, the solver reaches an
+                    exact solution well within this limit.
+                </p>
             </section>
 
             <!-- Implementation Notes -->
             <section class="docs-section">
                 <h2>6. Implementation Notes</h2>
 
-                <h3>Legacy vs New Solver</h3>
+                <h3>Three Implementations</h3>
                 <p>
-                    Two implementations exist: a legacy C++ solver and a new C++/JavaScript solver.
-                    Both use the same Bayesian inference approach and produce <strong>identical results
-                    to machine precision</strong> (differences &lt; 10<sup>-10</sup>).
+                    Three solver implementations exist:
+                </p>
+                <ul>
+                    <li><strong>Legacy C++ solver</strong> &mdash; original greedy heuristic (kept for reference)</li>
+                    <li><strong>New C++ solver</strong> &mdash; iterative deepening minimax with Zobrist hashing
+                        and fixed-size transposition table</li>
+                    <li><strong>JavaScript web solver</strong> &mdash; iterative deepening minimax with
+                        <code>compactKey()</code> and <code>Map</code> for memoization</li>
+                </ul>
+                <p>
+                    The C++ and JavaScript solvers use the same algorithm and produce equivalent results.
+                    They differ only in memoization strategy: C++ uses incremental Zobrist hash updates
+                    with a power-of-2 transposition table, while JavaScript builds a collision-free string
+                    key (<code>compactKey()</code>) and stores results in a standard <code>Map</code>.
                 </p>
 
-                <h3>Implementation Approach</h3>
+                <h3>Bayesian Inference (All Implementations)</h3>
                 <div class="note-box">
-                    Both solvers use two-stage Bayesian inference:
+                    All solvers use two-stage Bayesian inference:
                     <ol>
                         <li>Calculate P(type | board) using compatible counts and N_accepted</li>
                         <li>Calculate P(value | type, board) from compatible boards per type</li>
@@ -344,6 +476,9 @@ score = P(Voltorb) - 0.01 &times; (P(Two) + P(Three))
                     <li>Compatible board enumeration is capped at 10,000 boards for responsiveness</li>
                     <li>Constraint pruning significantly reduces the search space</li>
                     <li>BigInt is used for N_accepted values (can exceed 10<sup>12</sup>)</li>
+                    <li>Iterative deepening with a 5-second timeout provides anytime results</li>
+                    <li>Memoization via <code>compactKey()</code> (JS) or Zobrist hashing (C++)
+                        avoids recomputing the same board states</li>
                 </ul>
             </section>
 
@@ -403,7 +538,7 @@ score = P(Voltorb) - 0.01 &times; (P(Two) + P(Three))
                         <div class="flow-number">7</div>
                         <div class="flow-content">
                             <strong>Find Best Move</strong><br>
-                            Free panel or lowest-risk panel
+                            Iterative deepening minimax search (or free panel if one exists)
                         </div>
                     </div>
                 </div>

@@ -76,7 +76,8 @@ The solver uses Bayesian inference to calculate probabilities:
 2. **Type probability**: P(type | evidence) based on N_accepted values
 3. **Panel probability**: P(panel = value | evidence) aggregated across all types
 4. **Safe panel detection**: Panels that are never Voltorb in any compatible board
-5. **Best move selection**: Prefer safe panels, otherwise lowest Voltorb probability
+5. **Iterative deepening minimax**: Compute expected win probability for each panel choice using depth-limited expectimax search with memoization
+6. **Result reporting**: Win probability labeled as exact (full tree explored) or approximate (depth N)
 
 ### Browser Compatibility
 
