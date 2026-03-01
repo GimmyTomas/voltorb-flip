@@ -100,19 +100,6 @@
                 </div>
 
                 <div class="solver-panel-center">
-                    <div class="solver-info-row">
-                        <span>Compatible Boards:</span>
-                        <span id="compatibleCount">--</span>
-                    </div>
-                    <div class="board-types-container">
-                        <div class="board-types-label">Board Type Probabilities</div>
-                        <div class="board-types-list" id="boardTypesList">
-                            <!-- Board type probabilities will be populated by JS -->
-                        </div>
-                    </div>
-                </div>
-
-                <div class="solver-panel-right">
                     <div class="solver-settings-row">
                         <span class="prob-toggle-label">Timeout:</span>
                         <select id="timeoutSelect">
@@ -124,7 +111,7 @@
                             <option value="600000">No limit</option>
                         </select>
                     </div>
-                    <div class="backend-toggle" style="display: none;">
+                    <div class="backend-toggle">
                         <span class="prob-toggle-label">Engine:</span>
                         <button id="jsBackendBtn" class="prob-toggle-btn active">JS</button>
                         <button id="wasmBackendBtn" class="prob-toggle-btn">WASM</button>
@@ -153,6 +140,19 @@
                         <div class="legend-item">
                             <div class="legend-color high-risk"></div>
                             <span>High Risk (&gt;50%)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="solver-panel-right">
+                    <div class="solver-info-row">
+                        <span>Compatible Boards:</span>
+                        <span id="compatibleCount">--</span>
+                    </div>
+                    <div class="board-types-container">
+                        <div class="board-types-label">Board Type Probabilities</div>
+                        <div class="board-types-list" id="boardTypesList">
+                            <!-- Board type probabilities will be populated by JS -->
                         </div>
                     </div>
                 </div>
