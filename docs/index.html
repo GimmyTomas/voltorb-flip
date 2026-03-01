@@ -63,25 +63,6 @@
                         <button id="resetBtn" class="control-btn">Reset</button>
                     </div>
 
-                    <div class="panel-section solver-settings-section">
-                        <div class="settings-label">Solver Settings</div>
-                        <label for="timeoutSelect">Timeout:</label>
-                        <select id="timeoutSelect">
-                            <option value="2000">2s</option>
-                            <option value="5000" selected>5s</option>
-                            <option value="15000">15s</option>
-                            <option value="30000">30s</option>
-                            <option value="60000">60s</option>
-                            <option value="600000">No limit</option>
-                        </select>
-                        <div class="backend-toggle">
-                            <span class="settings-label">Engine:</span>
-                            <button id="jsBackendBtn" class="prob-toggle-btn active">JS</button>
-                            <button id="wasmBackendBtn" class="prob-toggle-btn">WASM</button>
-                            <span id="wasmStatus" class="wasm-status"></span>
-                        </div>
-                    </div>
-
                     <div class="panel-section selfplay-controls" style="display: none;">
                         <button id="selfPlayBtn" class="control-btn">Self-Play</button>
                         <div class="speed-control">
@@ -90,21 +71,6 @@
                         </div>
                     </div>
 
-                    <div class="panel-section stats-section">
-                        <div class="stats-label">Statistics</div>
-                        <div class="stats-row">
-                            <span>Games:</span>
-                            <span id="gamesPlayed">0</span>
-                        </div>
-                        <div class="stats-row">
-                            <span>Wins:</span>
-                            <span id="gamesWon">0</span>
-                        </div>
-                        <div class="stats-row">
-                            <span>Win Rate:</span>
-                            <span id="winRate">--</span>
-                        </div>
-                    </div>
                 </div>
             </div>
 
@@ -147,6 +113,23 @@
                 </div>
 
                 <div class="solver-panel-right">
+                    <div class="solver-settings-row">
+                        <span class="prob-toggle-label">Timeout:</span>
+                        <select id="timeoutSelect">
+                            <option value="2000">2s</option>
+                            <option value="5000">5s</option>
+                            <option value="15000">15s</option>
+                            <option value="30000" selected>30s</option>
+                            <option value="60000">60s</option>
+                            <option value="600000">No limit</option>
+                        </select>
+                    </div>
+                    <div class="backend-toggle" style="display: none;">
+                        <span class="prob-toggle-label">Engine:</span>
+                        <button id="jsBackendBtn" class="prob-toggle-btn active">JS</button>
+                        <button id="wasmBackendBtn" class="prob-toggle-btn">WASM</button>
+                        <span id="wasmStatus" class="wasm-status"></span>
+                    </div>
                     <div class="prob-toggle">
                         <span class="prob-toggle-label">Display:</span>
                         <button id="probDetailedBtn" class="prob-toggle-btn">Detailed</button>

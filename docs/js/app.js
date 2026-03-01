@@ -23,7 +23,7 @@ class App {
         this.autoSolve = false;
 
         // Solver settings
-        this.solverTimeout = 5000;
+        this.solverTimeout = 30000;
         this.useWasm = false;
         this.solverWorker = null;
 
@@ -31,12 +31,6 @@ class App {
         this.isPlaying = false;
         this.playInterval = null;
         this.speed = 5; // 1-10
-
-        // Statistics
-        this.stats = {
-            gamesPlayed: 0,
-            gamesWon: 0
-        };
 
         this.setupCallbacks();
         this.initializeAssistantMode();
@@ -288,14 +282,9 @@ class App {
             const result = this.board.checkGameResult();
             if (result === GameResult.Won) {
                 this.pauseAutoPlay();
-                this.stats.gamesPlayed++;
-                this.stats.gamesWon++;
-                this.ui.updateStats(this.stats.gamesPlayed, this.stats.gamesWon);
                 this.ui.showGameOverModal(true, 'All multipliers revealed!');
             } else if (result === GameResult.Lost) {
                 this.pauseAutoPlay();
-                this.stats.gamesPlayed++;
-                this.ui.updateStats(this.stats.gamesPlayed, this.stats.gamesWon);
                 this.ui.showGameOverModal(false, 'You hit a Voltorb!');
             }
         });

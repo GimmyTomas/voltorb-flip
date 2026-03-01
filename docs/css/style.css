@@ -495,7 +495,7 @@ main {
     margin-bottom: 4px;
 }
 
-#levelSelect, #timeoutSelect {
+#levelSelect {
     width: 100%;
     padding: 6px;
     font-family: inherit;
@@ -506,24 +506,27 @@ main {
     border-radius: 4px;
 }
 
-.settings-label {
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 6px;
+#timeoutSelect {
+    padding: 4px 6px;
+    font-family: inherit;
+    font-size: 11px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    border: 2px solid var(--border-color);
+    border-radius: 4px;
+}
+
+.solver-settings-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .backend-toggle {
     display: flex;
     align-items: center;
     gap: 6px;
-    margin-top: 8px;
     flex-wrap: wrap;
-}
-
-.backend-toggle .settings-label {
-    margin-bottom: 0;
-    margin-right: 2px;
 }
 
 .wasm-status {
@@ -548,7 +551,7 @@ main {
 }
 
 /* Win Probability */
-.win-prob-label, .suggestion-label, .stats-label, .legend-title {
+.win-prob-label, .suggestion-label, .legend-title {
     font-size: 12px;
     margin-bottom: 6px;
     text-transform: uppercase;
@@ -728,13 +731,6 @@ main {
     color: rgba(255, 255, 255, 0.8);
 }
 
-/* Stats */
-.stats-row {
-    display: flex;
-    justify-content: space-between;
-    font-size: 14px;
-    margin-bottom: 4px;
-}
 
 /* Legend */
 .legend-section {

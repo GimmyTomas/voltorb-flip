@@ -52,11 +52,6 @@ export class UI {
         this.probNoneBtn = document.getElementById('probNoneBtn');
         this.legendSection = document.getElementById('legendSection');
 
-        // Stats
-        this.gamesPlayed = document.getElementById('gamesPlayed');
-        this.gamesWon = document.getElementById('gamesWon');
-        this.winRate = document.getElementById('winRate');
-
         // Callbacks
         this.onTileClick = null;
         this.onHintClick = null;
@@ -559,13 +554,6 @@ export class UI {
         if (listEl.children.length === 0) {
             listEl.innerHTML = '<div style="color: rgba(255,255,255,0.5);">No compatible types</div>';
         }
-    }
-
-    // Update statistics
-    updateStats(played, won) {
-        this.gamesPlayed.textContent = played;
-        this.gamesWon.textContent = won;
-        this.winRate.textContent = played > 0 ? `${Math.round(won / played * 100)}%` : '--';
     }
 
     // Set mode
