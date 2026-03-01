@@ -145,6 +145,17 @@ public:
     size_t getCacheMisses() const { return tt_.getMisses(); }
     size_t getNodesEvaluated() const { return nodesEvaluated_; }
 
+    /**
+     * Get compatible boards from last solve() call.
+     * Used by WASM bindings for probability calculation.
+     */
+    const std::vector<Board>& getCompatibleBoards() const { return allBoards_; }
+
+    /**
+     * Check if compatible board generation was capped.
+     */
+    bool isCapped() const { return allBoards_.size() >= options_.maxCompatibleBoards; }
+
 private:
     SolverOptions options_;
     TranspositionTable tt_;

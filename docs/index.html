@@ -63,6 +63,25 @@
                         <button id="resetBtn" class="control-btn">Reset</button>
                     </div>
 
+                    <div class="panel-section solver-settings-section">
+                        <div class="settings-label">Solver Settings</div>
+                        <label for="timeoutSelect">Timeout:</label>
+                        <select id="timeoutSelect">
+                            <option value="2000">2s</option>
+                            <option value="5000" selected>5s</option>
+                            <option value="15000">15s</option>
+                            <option value="30000">30s</option>
+                            <option value="60000">60s</option>
+                            <option value="600000">No limit</option>
+                        </select>
+                        <div class="backend-toggle">
+                            <span class="settings-label">Engine:</span>
+                            <button id="jsBackendBtn" class="prob-toggle-btn active">JS</button>
+                            <button id="wasmBackendBtn" class="prob-toggle-btn">WASM</button>
+                            <span id="wasmStatus" class="wasm-status"></span>
+                        </div>
+                    </div>
+
                     <div class="panel-section selfplay-controls" style="display: none;">
                         <button id="selfPlayBtn" class="control-btn">Self-Play</button>
                         <div class="speed-control">

@@ -4,7 +4,7 @@
 import { BOARD_SIZE, PanelValue, GameResult } from './boardTypes.js';
 import { Board } from './board.js';
 import { BoardGenerator } from './generator.js';
-import { solve, solveProgressive } from './solver.js';
+import { solve } from './solver.js';
 import { UI } from './ui.js';
 
 class App {
@@ -22,10 +22,10 @@ class App {
         this.solverResult = null;
         this.autoSolve = false;
 
-        // Progressive solver state
-        this.cancelSolver = null;
-        this.solverPending = false;
-        this.currentSolveId = null;
+        // Solver settings
+        this.solverTimeout = 5000;
+        this.useWasm = false;
+        this.solverWorker = null;
 
         // Self-play state
         this.isPlaying = false;
@@ -192,6 +192,25 @@ class App {
         this.ui.onProbDisplayModeChange = (mode) => {
             this.updateDisplay();
         };
+
+        // Timeout change
+        this.ui.onTimeoutChange = (timeout) => {
+            this.solverTimeout = timeout;
+        };
+
+        // Solver backend change
+        this.ui.onSolverBackendChange = (backend) => {
+            this.useWasm = (backend === 'wasm');
+            if (this.useWasm) {
+                // Preload WASM module
+                this.ui.setWasmLoading(true);
+                if (this.solverWorker) {
+                    this.solverWorker.terminate();
+                }
+                this.solverWorker = this.createWorker();
+                this.solverWorker.postMessage({ type: 'preloadWasm' });
+            }
+        };
     }
 
     // Initialize assistant mode with empty board
@@ -282,47 +301,90 @@ class App {
         });
     }
 
-    // Defer solver execution to avoid blocking the UI
+    // Defer solver execution to next microtask
     deferSolver() {
         this.updateDisplay();
-        if (this.solverPending) return;
-        this.solverPending = true;
         setTimeout(() => {
-            this.solverPending = false;
             this.runSolver();
         }, 0);
     }
 
-    // Run the solver progressively (non-blocking)
-    runSolver() {
-        // Cancel any in-progress solve
-        this.cancelSolver?.();
-        this.cancelSolver = null;
+    // Serialize board state to plain objects for Worker transfer
+    serializeBoard(board) {
+        const panels = [];
+        for (let i = 0; i < BOARD_SIZE; i++) {
+            panels[i] = [];
+            for (let j = 0; j < BOARD_SIZE; j++) {
+                panels[i][j] = board.get(i, j);
+            }
+        }
 
-        const solveId = Symbol();
-        this.currentSolveId = solveId;
+        const rowHints = [];
+        const colHints = [];
+        for (let i = 0; i < BOARD_SIZE; i++) {
+            rowHints[i] = { ...board.rowHint(i) };
+            colHints[i] = { ...board.colHint(i) };
+        }
+
+        return { level: board.level, panels, rowHints, colHints };
+    }
+
+    // Create a new solver Worker
+    createWorker() {
+        const worker = new Worker('./js/solver-worker.js', { type: 'module' });
+
+        worker.onmessage = (e) => {
+            const { type } = e.data;
+
+            if (type === 'progress') {
+                this.solverResult = e.data.result;
+                this.updateDisplay();
+            } else if (type === 'complete') {
+                this.solverResult = e.data.result;
+                const r = this.solverResult;
+                console.log(`Solver completed in ${r.computeTime.toFixed(1)}ms`);
+                console.log(`Compatible boards: ${r.compatibleCount}`);
+                console.log(`Safe panels: ${r.safePanels.length}`);
+                console.log(`Win probability: ${(r.winProbability * 100).toFixed(1)}%`);
+                this.updateDisplay();
+            } else if (type === 'error') {
+                console.error('Solver error:', e.data.message);
+            } else if (type === 'wasmReady') {
+                this.ui.setWasmAvailable(true);
+            } else if (type === 'wasmError') {
+                console.error('WASM load error:', e.data.message);
+                this.ui.setWasmAvailable(false);
+                this.useWasm = false;
+                this.ui.setSolverBackend('js');
+            }
+        };
+
+        worker.onerror = (err) => {
+            console.error('Worker error:', err);
+        };
+
+        return worker;
+    }
+
+    // Run the solver via Web Worker
+    runSolver() {
+        // Terminate existing worker (cancels any in-progress solve)
+        if (this.solverWorker) {
+            this.solverWorker.terminate();
+            this.solverWorker = null;
+        }
 
         console.log('Running solver...');
 
-        this.cancelSolver = solveProgressive(
-            this.board,
-            (result) => {
-                // onProgress: update display with intermediate result
-                if (this.currentSolveId !== solveId) return;
-                this.solverResult = result;
-                this.updateDisplay();
-            },
-            (result) => {
-                // onComplete: final result
-                if (this.currentSolveId !== solveId) return;
-                this.solverResult = result;
-                console.log(`Solver completed in ${result.computeTime.toFixed(1)}ms`);
-                console.log(`Compatible boards: ${result.compatibleCount}`);
-                console.log(`Safe panels: ${result.safePanels.length}`);
-                console.log(`Win probability: ${(result.winProbability * 100).toFixed(1)}%`);
-                this.updateDisplay();
+        this.solverWorker = this.createWorker();
+        this.solverWorker.postMessage({
+            type: 'solve',
+            boardData: this.serializeBoard(this.board),
+            options: {
+                timeout: this.solverTimeout,
+                useWasm: this.useWasm
             }
-        );
+        });
     }
 
     // Run the solver synchronously (for auto-play)

@@ -38,6 +38,14 @@ export class UI {
         // New Game button for assistant mode
         this.newGameAssistantBtn = document.getElementById('newGameAssistantBtn');
 
+        // Solver settings
+        this.timeoutSelect = document.getElementById('timeoutSelect');
+
+        // Backend toggle
+        this.jsBackendBtn = document.getElementById('jsBackendBtn');
+        this.wasmBackendBtn = document.getElementById('wasmBackendBtn');
+        this.wasmStatus = document.getElementById('wasmStatus');
+
         // Probability toggle
         this.probDetailedBtn = document.getElementById('probDetailedBtn');
         this.probVoltorbBtn = document.getElementById('probVoltorbBtn');
@@ -64,6 +72,8 @@ export class UI {
         this.onPlayPause = null;
         this.onSpeedChange = null;
         this.onProbDisplayModeChange = null;
+        this.onTimeoutChange = null;
+        this.onSolverBackendChange = null;
 
         // State
         this.selectedTile = null;
@@ -164,6 +174,24 @@ export class UI {
 
         this.probNoneBtn.addEventListener('click', () => {
             this.setProbDisplayMode('none');
+        });
+
+        // Timeout select
+        this.timeoutSelect.addEventListener('change', () => {
+            if (this.onTimeoutChange) {
+                this.onTimeoutChange(parseInt(this.timeoutSelect.value));
+            }
+        });
+
+        // Backend toggle
+        this.jsBackendBtn.addEventListener('click', () => {
+            this.setSolverBackend('js');
+            if (this.onSolverBackendChange) this.onSolverBackendChange('js');
+        });
+
+        this.wasmBackendBtn.addEventListener('click', () => {
+            this.setSolverBackend('wasm');
+            if (this.onSolverBackendChange) this.onSolverBackendChange('wasm');
         });
 
         // Click outside modal to close
@@ -606,5 +634,33 @@ export class UI {
     // Set level without triggering callback
     setLevel(level) {
         this.levelSelect.value = level;
+    }
+
+    // Set solver backend toggle
+    setSolverBackend(backend) {
+        this.jsBackendBtn.classList.toggle('active', backend === 'js');
+        this.wasmBackendBtn.classList.toggle('active', backend === 'wasm');
+    }
+
+    // Set WASM loading state
+    setWasmLoading(loading) {
+        if (loading) {
+            this.wasmStatus.textContent = 'Loading...';
+            this.wasmStatus.className = 'wasm-status loading';
+        } else {
+            this.wasmStatus.textContent = '';
+            this.wasmStatus.className = 'wasm-status';
+        }
+    }
+
+    // Set WASM availability
+    setWasmAvailable(available) {
+        if (available) {
+            this.wasmStatus.textContent = 'Ready';
+            this.wasmStatus.className = 'wasm-status ready';
+        } else {
+            this.wasmStatus.textContent = 'Error';
+            this.wasmStatus.className = 'wasm-status error';
+        }
     }
 }

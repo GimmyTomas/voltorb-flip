@@ -71,6 +71,28 @@ target_link_libraries(trace_legacy PRIVATE voltorb_lib legacy_solver_lib)
 add_executable(trace_fill debug/trace_fill.cpp)
 target_link_libraries(trace_fill PRIVATE voltorb_lib legacy_solver_lib)
 
+# WebAssembly target (built with Emscripten)
+option(VOLTORB_BUILD_WASM "Build WebAssembly module" OFF)
+
+if(VOLTORB_BUILD_WASM AND EMSCRIPTEN)
+    add_executable(voltorb_wasm docs/wasm/solver_bindings.cpp)
+    target_link_libraries(voltorb_wasm PRIVATE voltorb_lib)
+    target_link_options(voltorb_wasm PRIVATE
+        --bind
+        -sNO_EXIT_RUNTIME=1
+        -sMODULARIZE=1
+        -sEXPORT_NAME="VoltorbSolverModule"
+        -sENVIRONMENT='worker'
+        -sALLOW_MEMORY_GROWTH=1
+        -sINITIAL_MEMORY=33554432
+        -sMAXIMUM_MEMORY=134217728
+    )
+    set_target_properties(voltorb_wasm PROPERTIES
+        OUTPUT_NAME "voltorb_wasm"
+        SUFFIX ".js"
+    )
+endif()
+
 # Testing
 option(VOLTORB_BUILD_TESTS "Build test suite" ON)
 if(VOLTORB_BUILD_TESTS)

@@ -495,7 +495,7 @@ main {
     margin-bottom: 4px;
 }
 
-#levelSelect {
+#levelSelect, #timeoutSelect {
     width: 100%;
     padding: 6px;
     font-family: inherit;
@@ -504,6 +504,47 @@ main {
     color: var(--text-color);
     border: 2px solid var(--border-color);
     border-radius: 4px;
+}
+
+.settings-label {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+}
+
+.backend-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+}
+
+.backend-toggle .settings-label {
+    margin-bottom: 0;
+    margin-right: 2px;
+}
+
+.wasm-status {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+
+.wasm-status.loading {
+    background: var(--medium-risk-color);
+    color: #000;
+}
+
+.wasm-status.ready {
+    background: var(--safe-color);
+    color: #000;
+}
+
+.wasm-status.error {
+    background: var(--high-risk-color);
+    color: #fff;
 }
 
 /* Win Probability */
