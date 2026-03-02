@@ -16,7 +16,7 @@ class App {
         this.board = new Board(1);
         this.solutionBoard = null; // Full solution in self-play mode
         this.history = [];
-        this.mode = 'assistant'; // 'assistant' or 'selfplay'
+        this.mode = 'selfplay'; // 'assistant' or 'selfplay'
 
         // Solver results
         this.solverResult = null;
@@ -39,7 +39,7 @@ class App {
         this.solverWorker = this.createWorker();
         this.solverWorker.postMessage({ type: 'preloadWasm' });
 
-        this.initializeAssistantMode();
+        this.setMode(this.mode);
     }
 
     setupCallbacks() {

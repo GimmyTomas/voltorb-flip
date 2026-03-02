@@ -342,6 +342,52 @@ main {
     border: 1px solid var(--border-color);
 }
 
+/* Inline hint inputs (assistant mode) */
+.hint-sum-input,
+.hint-voltorb-input {
+    width: 36px;
+    height: 24px;
+    font-size: 18px;
+    font-weight: bold;
+    text-align: center;
+    font-family: inherit;
+    background: rgba(0, 0, 0, 0.2);
+    color: var(--text-color);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 3px;
+    outline: none;
+    -moz-appearance: textfield;
+}
+
+.hint-sum-input::-webkit-inner-spin-button,
+.hint-sum-input::-webkit-outer-spin-button,
+.hint-voltorb-input::-webkit-inner-spin-button,
+.hint-voltorb-input::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.hint-sum-input:focus,
+.hint-voltorb-input:focus {
+    border-color: var(--text-color);
+    background: rgba(0, 0, 0, 0.4);
+}
+
+.hint-voltorb-input {
+    width: 28px;
+    height: 20px;
+    font-size: 14px;
+}
+
+/* Disable hover effects on editable hint panels */
+.hint-panel:has(.hint-sum-input) {
+    cursor: default;
+}
+
+.hint-panel:has(.hint-sum-input):hover {
+    transform: none;
+}
+
 /* Side Panel */
 .side-panel {
     width: 160px;
@@ -533,6 +579,10 @@ main {
     font-size: 10px;
     padding: 2px 6px;
     border-radius: 3px;
+}
+
+.wasm-status:empty {
+    display: none;
 }
 
 .wasm-status.loading {
@@ -1041,6 +1091,18 @@ main {
     .hint-sum {
         font-size: 18px;
     }
+
+    .hint-sum-input {
+        width: 30px;
+        height: 20px;
+        font-size: 15px;
+    }
+
+    .hint-voltorb-input {
+        width: 24px;
+        height: 18px;
+        font-size: 12px;
+    }
 }
 
 @media (max-width: 400px) {
@@ -1073,5 +1135,17 @@ main {
     .hint-voltorb-icon {
         width: 12px;
         height: 12px;
+    }
+
+    .hint-sum-input {
+        width: 26px;
+        height: 18px;
+        font-size: 13px;
+    }
+
+    .hint-voltorb-input {
+        width: 22px;
+        height: 16px;
+        font-size: 11px;
     }
 }

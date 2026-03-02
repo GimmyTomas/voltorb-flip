@@ -21,7 +21,7 @@
             <section class="docs-section">
                 <h2>1. Introduction</h2>
                 <p>
-                    Voltorb Flip is a minigame from Pokemon HeartGold/SoulSilver that combines
+                    Voltorb Flip is a minigame from Pokémon HeartGold/SoulSilver that combines
                     elements of Minesweeper and Picross. The goal is to flip all panels containing
                     multipliers (2s and 3s) while avoiding Voltorbs (bombs).
                 </p>
@@ -31,11 +31,52 @@
                     then uses <strong>iterative deepening minimax</strong> (expectimax) to find the
                     move that maximizes the probability of winning the game.
                 </p>
+                <p>
+                    Found a bug or have feedback? Open an issue on
+                    <a href="https://github.com/GimmyTomas/voltorb-flip" target="_blank" rel="noopener" style="color: var(--hint-orange);">GitHub</a>.
+                </p>
+            </section>
+
+            <!-- Why This Solver Is Different -->
+            <section class="docs-section">
+                <h2>2. Why This Solver Is Different</h2>
+                <p>
+                    Most Voltorb Flip solvers share two fundamental limitations that lead to
+                    suboptimal play:
+                </p>
+
+                <h3>Limitation 1: Ignoring Board Generation Mechanics</h3>
+                <p>
+                    Other solvers treat all constraint-satisfying boards as equally likely.
+                    In reality, the game selects from 10 predefined board types per level,
+                    each with different panel compositions and legality constraints. Because
+                    some types produce more valid boards than others, they are not equally
+                    probable given the observed hints.
+                </p>
+                <p>
+                    This solver uses <strong>Bayesian inference</strong> to compute
+                    P(type&nbsp;|&nbsp;board) for each of the 10 types, weighting each
+                    type by its <code>N_accepted</code> count. The result is more accurate
+                    per-panel probabilities that reflect the true generation process.
+                </p>
+
+                <h3>Limitation 2: Greedy Strategy</h3>
+                <p>
+                    Other solvers recommend the panel with the lowest Voltorb probability
+                    &mdash; a greedy, one-step-ahead heuristic. This ignores how the current
+                    choice affects future moves: flipping a slightly riskier panel now may
+                    reveal information that makes the rest of the game much safer.
+                </p>
+                <p>
+                    This solver uses <strong>iterative deepening minimax</strong> (expectimax)
+                    to search the full game tree and find the move that maximizes the overall
+                    probability of winning, not just surviving the next flip.
+                </p>
             </section>
 
             <!-- Board Types & Generation -->
             <section class="docs-section">
-                <h2>2. Board Types & Generation</h2>
+                <h2>3. Board Types & Generation</h2>
 
                 <h3>Board Type Parameters</h3>
                 <p>
@@ -96,7 +137,7 @@ T2: 1,407,934,200 valid boards
 
             <!-- Compatible Board Enumeration -->
             <section class="docs-section">
-                <h2>3. Compatible Board Enumeration</h2>
+                <h2>4. Compatible Board Enumeration</h2>
                 <p>
                     Given the current hints and any revealed panels, the solver finds all possible
                     complete boards. This is a two-phase constraint satisfaction process:
@@ -152,7 +193,7 @@ T2: 1,407,934,200 valid boards
 
             <!-- Probability Calculation -->
             <section class="docs-section">
-                <h2>4. Probability Calculation (Bayesian Inference)</h2>
+                <h2>5. Probability Calculation (Bayesian Inference)</h2>
 
                 <h3>The Key Insight</h3>
                 <p>
@@ -267,7 +308,7 @@ P(T5 | board) = 5.59 / (4.57 + 5.59) = 55.0%
 
             <!-- Solver Algorithm -->
             <section class="docs-section">
-                <h2>5. Solver Algorithm</h2>
+                <h2>6. Solver Algorithm</h2>
 
                 <h3>Goal</h3>
                 <p>
@@ -444,7 +485,7 @@ P(T5 | board) = 5.59 / (4.57 + 5.59) = 55.0%
 
             <!-- Implementation Notes -->
             <section class="docs-section">
-                <h2>6. Implementation Notes</h2>
+                <h2>7. Implementation Notes</h2>
 
                 <h3>Three Implementations</h3>
                 <p>
@@ -496,7 +537,7 @@ P(T5 | board) = 5.59 / (4.57 + 5.59) = 55.0%
 
             <!-- Summary Flow Diagram -->
             <section class="docs-section">
-                <h2>7. Summary: Complete Flow</h2>
+                <h2>8. Summary: Complete Flow</h2>
                 <div class="flow-diagram">
                     <div class="flow-step">
                         <div class="flow-number">1</div>
@@ -558,6 +599,7 @@ P(T5 | board) = 5.59 / (4.57 + 5.59) = 55.0%
 
             <footer class="docs-footer">
                 <a href="index.html" class="nav-btn">Back to Game</a>
+                <a href="https://github.com/GimmyTomas/voltorb-flip" class="nav-btn" target="_blank" rel="noopener">GitHub</a>
             </footer>
         </main>
     </div>

@@ -76,6 +76,7 @@ export class UI {
         this.selectedTile = null;
         this.selectedHint = null;
         this.probDisplayMode = 'voltorb'; // 'detailed', 'voltorb', 'none'
+        this.currentMode = 'selfplay'; // track current mode for hint rendering
 
         this.setupEventListeners();
     }
@@ -215,11 +216,44 @@ export class UI {
         });
     }
 
+    // Save which hint input is currently focused (before re-render)
+    _saveFocusedHintInput() {
+        const active = document.activeElement;
+        if (active && (active.classList.contains('hint-sum-input') || active.classList.contains('hint-voltorb-input'))) {
+            return {
+                type: active.dataset.hintType,
+                index: active.dataset.hintIndex,
+                field: active.dataset.hintField,
+                selectionStart: active.selectionStart,
+                selectionEnd: active.selectionEnd
+            };
+        }
+        return null;
+    }
+
+    // Restore focus to the same hint input after re-render
+    _restoreFocusedHintInput(saved) {
+        if (!saved) return;
+        const selector = saved.field === 'sum' ? '.hint-sum-input' : '.hint-voltorb-input';
+        const inputs = document.querySelectorAll(selector);
+        for (const input of inputs) {
+            if (input.dataset.hintType === saved.type && input.dataset.hintIndex === saved.index) {
+                input.focus();
+                if (saved.selectionStart !== undefined) {
+                    input.setSelectionRange(saved.selectionStart, saved.selectionEnd);
+                }
+                break;
+            }
+        }
+    }
+
     // Render the complete board
     renderBoard(board, probabilities = null, suggestedPanel = null, safePanels = []) {
+        const savedFocus = this._saveFocusedHintInput();
         this.renderTiles(board, probabilities, suggestedPanel, safePanels);
         this.renderRowHints(board);
         this.renderColHints(board);
+        this._restoreFocusedHintInput(savedFocus);
     }
 
     // Render tiles
@@ -392,31 +426,92 @@ export class UI {
         panel.dataset.type = type;
         panel.dataset.index = index;
 
-        const sumDiv = document.createElement('div');
-        sumDiv.className = 'hint-sum';
-        sumDiv.textContent = hint.sum.toString().padStart(2, '0');
+        if (this.currentMode === 'assistant') {
+            // Inline editing mode: use input fields
+            // tabindex: rows 0-4 sum(1,3,5,7,9) voltorb(2,4,6,8,10), cols 0-4 sum(11,13,15,17,19) voltorb(12,14,16,18,20)
+            const baseTab = type === 'row' ? index * 2 + 1 : 10 + index * 2 + 1;
 
-        const voltorbDiv = document.createElement('div');
-        voltorbDiv.className = 'hint-voltorb';
+            const sumInput = document.createElement('input');
+            sumInput.type = 'number';
+            sumInput.className = 'hint-sum-input';
+            sumInput.min = 0;
+            sumInput.max = 15;
+            sumInput.value = hint.sum;
+            sumInput.tabIndex = baseTab;
+            sumInput.dataset.hintType = type;
+            sumInput.dataset.hintIndex = index;
+            sumInput.dataset.hintField = 'sum';
 
-        const voltorbIcon = document.createElement('div');
-        voltorbIcon.className = 'hint-voltorb-icon';
+            const voltorbDiv = document.createElement('div');
+            voltorbDiv.className = 'hint-voltorb';
 
-        const voltorbCount = document.createElement('span');
-        voltorbCount.textContent = hint.voltorbCount;
+            const voltorbIcon = document.createElement('div');
+            voltorbIcon.className = 'hint-voltorb-icon';
 
-        voltorbDiv.appendChild(voltorbIcon);
-        voltorbDiv.appendChild(voltorbCount);
+            const voltorbInput = document.createElement('input');
+            voltorbInput.type = 'number';
+            voltorbInput.className = 'hint-voltorb-input';
+            voltorbInput.min = 0;
+            voltorbInput.max = 5;
+            voltorbInput.value = hint.voltorbCount;
+            voltorbInput.tabIndex = baseTab + 1;
+            voltorbInput.dataset.hintType = type;
+            voltorbInput.dataset.hintIndex = index;
+            voltorbInput.dataset.hintField = 'voltorb';
 
-        panel.appendChild(sumDiv);
-        panel.appendChild(voltorbDiv);
+            voltorbDiv.appendChild(voltorbIcon);
+            voltorbDiv.appendChild(voltorbInput);
 
-        // Add click handler for editing
-        panel.addEventListener('click', () => {
-            if (this.onHintClick) {
-                this.onHintClick(type, index, hint);
-            }
-        });
+            panel.appendChild(sumInput);
+            panel.appendChild(voltorbDiv);
+
+            // Prevent panel click from interfering with inputs
+            sumInput.addEventListener('click', (e) => e.stopPropagation());
+            voltorbInput.addEventListener('click', (e) => e.stopPropagation());
+
+            // On change, call onHintEdit directly
+            const handleChange = () => {
+                if (this.onHintEdit) {
+                    const sum = parseInt(sumInput.value) || 0;
+                    const voltorbs = parseInt(voltorbInput.value) || 0;
+                    this.onHintEdit(type, index, sum, voltorbs);
+                }
+            };
+
+            sumInput.addEventListener('change', handleChange);
+            voltorbInput.addEventListener('change', handleChange);
+
+            // Select all text on focus for easy editing
+            sumInput.addEventListener('focus', () => sumInput.select());
+            voltorbInput.addEventListener('focus', () => voltorbInput.select());
+        } else {
+            // Self-play mode: display-only rendering
+            const sumDiv = document.createElement('div');
+            sumDiv.className = 'hint-sum';
+            sumDiv.textContent = hint.sum.toString().padStart(2, '0');
+
+            const voltorbDiv = document.createElement('div');
+            voltorbDiv.className = 'hint-voltorb';
+
+            const voltorbIcon = document.createElement('div');
+            voltorbIcon.className = 'hint-voltorb-icon';
+
+            const voltorbCount = document.createElement('span');
+            voltorbCount.textContent = hint.voltorbCount;
+
+            voltorbDiv.appendChild(voltorbIcon);
+            voltorbDiv.appendChild(voltorbCount);
+
+            panel.appendChild(sumDiv);
+            panel.appendChild(voltorbDiv);
+
+            // Add click handler for editing (selfplay mode uses modal)
+            panel.addEventListener('click', () => {
+                if (this.onHintClick) {
+                    this.onHintClick(type, index, hint);
+                }
+            });
+        }
 
         return panel;
     }
@@ -571,6 +666,7 @@ export class UI {
 
     // Set mode
     setMode(mode) {
+        this.currentMode = mode;
         if (mode === 'assistant') {
             this.assistantModeBtn.classList.add('active');
             this.playModeBtn.classList.remove('active');
