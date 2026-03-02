@@ -83,8 +83,8 @@ board came from that type.
 
 ### Implementation Note
 
-The C++ and JavaScript solvers produce identical results to machine precision (< 1e-10).
-Both implementations:
+The C++, JavaScript, and WASM solvers produce identical results to machine precision (< 1e-10).
+All implementations:
 1. Check each compatible board for legality against ALL types with matching (n0, n2, n3)
 2. Count the board in every type it satisfies (no early break)
 3. Use the same Bayesian formulas above
@@ -164,7 +164,7 @@ cannot contribute to winning and flipping them is never beneficial.
 ### Timeout Handling
 
 The solver monitors elapsed time and returns the best depth-limited result when:
-- Time exceeds configured timeout (5s for JS, 10s for C++)
+- Time exceeds configured timeout (30s default in web GUI, 10s for C++ CLI)
 
 Results are marked as "approximate" when the full tree was not explored.
 

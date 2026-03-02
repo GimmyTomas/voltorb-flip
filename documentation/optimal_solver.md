@@ -203,8 +203,9 @@ Skip panels where no compatible board has a multiplier (2 or 3):
 
 ### Observed Performance (C++ only)
 
-> The following benchmarks are from the C++ implementation. JavaScript performance
-> varies by browser but is generally comparable for most boards.
+> The following benchmarks are from the C++ implementation. The WASM build runs at
+> near-native speed in the browser. The pure JavaScript solver is generally comparable
+> for most boards but slower on complex ones.
 
 | Level | Unknown Panels | Typical Time to Exact |
 |-------|----------------|----------------------|
@@ -252,7 +253,7 @@ Mid-game (fewer unknowns):
 
 ### Timeout Configuration
 
-Default timeout: 10 seconds (C++), 5 seconds (JavaScript)
+Default timeout: 10 seconds (C++ CLI), 30 seconds (web GUI, both JS and WASM engines)
 
 For interactive use:
 - 1-2 seconds: Good balance of speed and accuracy

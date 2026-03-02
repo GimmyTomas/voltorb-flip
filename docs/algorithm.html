@@ -437,7 +437,7 @@ P(T5 | board) = 5.59 / (4.57 + 5.59) = 55.0%
                         lower bound on the true win probability and improves with deeper search</li>
                 </ul>
                 <p>
-                    The default timeout is 5 seconds. For most boards, the solver reaches an
+                    The default timeout is 30 seconds. For most boards, the solver reaches an
                     exact solution well within this limit.
                 </p>
             </section>
@@ -446,21 +446,26 @@ P(T5 | board) = 5.59 / (4.57 + 5.59) = 55.0%
             <section class="docs-section">
                 <h2>6. Implementation Notes</h2>
 
-                <h3>Two Implementations</h3>
+                <h3>Three Implementations</h3>
                 <p>
-                    Two solver implementations exist:
+                    Three solver implementations exist:
                 </p>
                 <ul>
                     <li><strong>C++ solver</strong> &mdash; iterative deepening minimax with Zobrist hashing
-                        and fixed-size transposition table</li>
+                        and fixed-size transposition table (CLI applications)</li>
                     <li><strong>JavaScript web solver</strong> &mdash; iterative deepening minimax with
                         <code>compactKey()</code> and <code>Map</code> for memoization</li>
+                    <li><strong>WASM solver</strong> &mdash; the C++ solver compiled to WebAssembly via
+                        Emscripten, running at near-native speed in the browser. Use the engine toggle
+                        in solver settings to switch between JS and WASM.</li>
                 </ul>
                 <p>
-                    The C++ and JavaScript solvers use the same algorithm and produce equivalent results.
-                    They differ only in memoization strategy: C++ uses incremental Zobrist hash updates
-                    with a power-of-2 transposition table, while JavaScript builds a collision-free string
+                    All three solvers use the same algorithm and produce equivalent results.
+                    The C++ and WASM solvers share the same codebase and use Zobrist hashing with a
+                    transposition table, while JavaScript builds a collision-free string
                     key (<code>compactKey()</code>) and stores results in a standard <code>Map</code>.
+                    Both the JS and WASM solvers report per-depth progress, allowing the UI to show
+                    improving results in real time.
                 </p>
 
                 <h3>Bayesian Inference (All Implementations)</h3>

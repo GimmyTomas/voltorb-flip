@@ -140,7 +140,9 @@ async function loadWasm() {
 }
 
 /**
- * Run the WASM solver.
+ * Run the WASM solver with per-depth progress updates.
+ * Computes probabilities/safePanels in JS (fast), then calls the WASM solver
+ * with a progress callback that posts 'progress' messages at each depth.
  */
 async function solveWASM(boardData, options) {
     const startTime = performance.now();
@@ -149,6 +151,32 @@ async function solveWASM(boardData, options) {
     try {
         const module = await loadWasm();
 
+        // Deserialize board and compute probabilities in JS (fast, O(compatible boards))
+        const board = deserializeBoard(boardData);
+        const compatibleBoards = generateCompatibleBoards(board, maxBoards);
+        const capped = compatibleBoards.length >= maxBoards;
+
+        if (compatibleBoards.length === 0) {
+            const result = {
+                suggestedPanel: null,
+                winProbability: 0,
+                probabilities: { panels: [], typeProbs: [], totalCompatible: 0 },
+                safePanels: [],
+                compatibleCount: 0,
+                capped: false,
+                computeTime: performance.now() - startTime,
+                depth: 0,
+                isExact: true,
+                reason: 'No compatible boards'
+            };
+            self.postMessage({ type: 'complete', result });
+            return;
+        }
+
+        const probabilities = calculateProbabilities(board, compatibleBoards);
+        const safePanels = findSafePanels(board, compatibleBoards);
+        const compatibleCount = compatibleBoards.length;
+
         // Convert board data to flat arrays for WASM
         const panels = [];
         for (let i = 0; i < BOARD_SIZE; i++) {
@@ -156,27 +184,60 @@ async function solveWASM(boardData, options) {
                 panels.push(boardData.panels[i][j]);
             }
         }
-
         const rowSums = boardData.rowHints.map(h => h.sum);
         const rowVoltorbs = boardData.rowHints.map(h => h.voltorbCount);
         const colSums = boardData.colHints.map(h => h.sum);
         const colVoltorbs = boardData.colHints.map(h => h.voltorbCount);
 
-        const wasmResult = module.solveBoard(
-            boardData.level, panels,
-            rowSums, rowVoltorbs,
-            colSums, colVoltorbs,
-            timeout, maxBoards
-        );
+        let wasmResult;
 
-        // Convert WASM result to match JS format
+        if (typeof module.solveBoardWithProgress === 'function') {
+            // New WASM with per-depth progress callback
+            wasmResult = module.solveBoardWithProgress(
+                boardData.level, panels,
+                rowSums, rowVoltorbs,
+                colSums, colVoltorbs,
+                timeout, maxBoards,
+                function(progress) {
+                    const result = buildResult(
+                        progress, probabilities, safePanels,
+                        compatibleCount, capped, startTime
+                    );
+                    self.postMessage({ type: 'progress', result });
+                }
+            );
+        } else {
+            // Fallback: old WASM without progress support
+            // Post an initial progress message with probabilities before the blocking call
+            const initialProgress = {
+                bestPanel: safePanels.length > 0 ? safePanels[0] : null,
+                winProbability: 0,
+                depth: 0,
+                isExact: false,
+                reason: 'Computing...'
+            };
+            const initialResult = buildResult(
+                initialProgress, probabilities, safePanels,
+                compatibleCount, capped, startTime
+            );
+            self.postMessage({ type: 'progress', result: initialResult });
+
+            wasmResult = module.solveBoard(
+                boardData.level, panels,
+                rowSums, rowVoltorbs,
+                colSums, colVoltorbs,
+                timeout, maxBoards
+            );
+        }
+
+        // Build final result using WASM solver output + JS-computed probabilities
         const result = {
             suggestedPanel: wasmResult.suggestedPanel,
             winProbability: wasmResult.winProbability,
-            probabilities: wasmResult.probabilities,
-            safePanels: wasmResult.safePanels,
-            compatibleCount: wasmResult.compatibleCount,
-            capped: wasmResult.capped,
+            probabilities,
+            safePanels,
+            compatibleCount,
+            capped,
             computeTime: performance.now() - startTime,
             depth: wasmResult.depth,
             isExact: wasmResult.isExact,

@@ -5,13 +5,14 @@
 - CMake 3.16+
 - C++20 compatible compiler (GCC 10+, Clang 12+, MSVC 2019+)
 - Git (for fetching test dependencies)
+- Emscripten SDK (optional, for WASM build)
 
 ## Quick Start
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/voltorb-flip-solver.git
-cd voltorb-flip-solver
+git clone https://github.com/gimmytomas/voltorb-flip.git
+cd voltorb-flip
 
 # Create build directory
 mkdir build && cd build
@@ -36,6 +37,7 @@ ctest --output-on-failure
 |--------|---------|-------------|
 | `VOLTORB_ENABLE_THREADS` | ON | Enable multi-threading support |
 | `VOLTORB_BUILD_TESTS` | ON | Build test suite |
+| `VOLTORB_BUILD_WASM` | OFF | Build WebAssembly module (requires Emscripten) |
 
 Example with options:
 ```bash
@@ -54,6 +56,55 @@ cmake -DCMAKE_BUILD_TYPE=Release ..
 # Release with debug info
 cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
 ```
+
+## WASM Build
+
+Build the C++ solver as a WebAssembly module for use in the web GUI.
+
+### Prerequisites
+
+Install the [Emscripten SDK](https://emscripten.org/docs/getting_started/downloads.html):
+
+```bash
+git clone https://github.com/emscripten-core/emsdk.git
+cd emsdk
+./emsdk install latest
+./emsdk activate latest
+```
+
+### Building
+
+```bash
+# Activate Emscripten in current shell
+source ~/emsdk/emsdk_env.sh
+
+# Run the build script
+./build_wasm.sh
+```
+
+### Output Files
+
+| File | Description |
+|------|-------------|
+| `docs/js/solver-wasm.js` | Emscripten JS loader (ES module) |
+| `docs/js/voltorb_wasm.wasm` | Compiled solver binary |
+
+The build script uses `emcmake` and `emmake` to cross-compile the C++ library and WASM bindings with these settings:
+- Release build with `-O2` optimization
+- No threading (browser Web Worker is single-threaded)
+- ES6 module output (`-sEXPORT_ES6=1`)
+- Worker-only environment (`-sENVIRONMENT='worker'`)
+- 32MB initial memory, 128MB max
+
+## Web Deployment
+
+The web GUI lives in the `docs/` directory and is served by GitHub Pages:
+
+- Push to `main` branch to deploy
+- Live at: https://gimmytomas.github.io/voltorb-flip/
+- No server-side code — entirely client-side
+
+The WASM files (`solver-wasm.js`, `voltorb_wasm.wasm`) must be committed to `docs/js/` for the WASM engine to work on GitHub Pages.
 
 ## Platform-Specific Notes
 

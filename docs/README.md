@@ -2,6 +2,8 @@
 
 A web-based GUI for the Voltorb Flip solver with pixel-art styling, live probability display, and both assistant and self-play modes.
 
+**[Play Online](https://gimmytomas.github.io/voltorb-flip/)**
+
 ## Features
 
 - **Pixel-art styled GUI** matching the original game
@@ -10,6 +12,9 @@ A web-based GUI for the Voltorb Flip solver with pixel-art styling, live probabi
 - **Live probabilities**: Show P(Voltorb) for each panel with color-coded bars
 - **Win probability** estimate display
 - **Safe panel detection**: Guaranteed-safe panels highlighted in green
+- **WASM solver backend**: C++ solver compiled to WebAssembly for near-native speed
+- **Progressive depth updates**: See solver results improve in real time at each search depth
+- **Solver settings**: Configurable timeout (up to 120s) and JS/WASM engine toggle
 - **Undo support**: Revert previous moves
 - **Responsive design**: Works on desktop and mobile
 
@@ -40,6 +45,11 @@ Watch the solver play automatically:
 4. Click "Play" to start auto-play, or click individual tiles to reveal them manually
 5. Adjust speed with the slider
 
+### Solver Settings
+
+- **Timeout slider**: Adjust the search time limit (default 30s, max 120s)
+- **Engine toggle**: Switch between JS (pure JavaScript) and WASM (WebAssembly) solver backends
+
 ## Probability Display
 
 Each covered tile shows:
@@ -57,16 +67,36 @@ Each covered tile shows:
 
 ## Technical Details
 
+### Architecture
+
+The web GUI uses a **Web Worker** to run the solver off the main thread, keeping the UI responsive:
+
+```
+app.js (main thread)  <-->  solver-worker.js (Web Worker)
+                                  |
+                          JS solver (solver.js)
+                                  or
+                          WASM solver (solver-wasm.js + voltorb_wasm.wasm)
+```
+
+The worker posts `'progress'` messages at each search depth and a final `'complete'` message, enabling real-time updates in the UI.
+
 ### Files
 
 - `index.html` - Main HTML structure
+- `algorithm.html` - Algorithm documentation page
 - `css/style.css` - Pixel-art CSS styling
+- `css/docs.css` - Documentation page styling
 - `js/boardTypes.js` - Board type definitions (80 types, N_accepted values)
 - `js/board.js` - Board state management
-- `js/solver.js` - Probability calculation and solving logic
+- `js/solver.js` - JS probability calculation and solving logic
 - `js/generator.js` - Random board generation
 - `js/ui.js` - DOM manipulation and rendering
 - `js/app.js` - Main application controller
+- `js/solver-worker.js` - Web Worker dispatching JS and WASM solvers
+- `js/solver-wasm.js` - Emscripten-generated WASM loader (ES module)
+- `js/voltorb_wasm.wasm` - Compiled C++ solver (WebAssembly binary)
+- `wasm/solver_bindings.cpp` - C++ Emscripten bindings (source)
 
 ### Algorithm
 
@@ -89,14 +119,24 @@ Requires a modern browser with ES6 module support:
 
 ## Development
 
-No build process required. Edit files and refresh the browser.
+No build process required for the JS frontend. Edit files and refresh the browser.
 
 To serve locally (optional, for development):
 ```bash
-cd web
+cd docs
 python3 -m http.server 8000
 # Open http://localhost:8000
 ```
+
+To rebuild the WASM module (requires Emscripten SDK):
+```bash
+source ~/emsdk/emsdk_env.sh
+./build_wasm.sh
+```
+
+### Deployment
+
+The `docs/` directory is served directly by GitHub Pages. Push to `main` to deploy.
 
 ## License
 

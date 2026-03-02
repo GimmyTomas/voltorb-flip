@@ -10,7 +10,9 @@ voltorb/
 ├── constraints.hpp  # Legality checking & board enumeration
 ├── probability.hpp  # Probability calculations
 ├── solver.hpp       # Minimax solver with memoization
-├── sampler.hpp      # Monte Carlo sampling fallback
+├── zobrist.hpp      # Zobrist hash key generation
+├── transposition.hpp # Transposition table for memoization
+├── sampler.hpp      # Monte Carlo sampling fallback (deprecated)
 ├── generator.hpp    # Random board generation
 └── game.hpp         # Game session management
 ```
@@ -77,6 +79,20 @@ Bayesian inference implementation:
 ### BoardProbabilities
 Complete probability state for solver decisions.
 
+## Zobrist Hashing (zobrist.hpp)
+
+Random key generation for incremental board hashing:
+- Pre-computed random keys per (position, value) pair
+- O(1) hash update when revealing a panel via XOR
+
+## Transposition Table (transposition.hpp)
+
+Fixed-size power-of-2 hash table for memoization:
+- Full hash verification to handle collisions
+- Depth tracking: only use cached result if stored depth >= current depth
+- Always-replace policy (effective for iterative deepening)
+- Configurable size (default 1M entries for C++, 256K for WASM)
+
 ## Solver (solver.hpp)
 
 ### SolverOptions
@@ -91,6 +107,14 @@ Output:
 - `winProbability`: Expected win rate
 - `isExact`: Whether exhaustive or sampled
 - `computeTime`: Actual computation time
+
+### SolverProgress
+Per-depth progress update:
+- `bestPanel`: Best panel found at this depth
+- `winProbability`: Win probability estimate
+- `depth`: Search depth completed
+- `isExact`: Whether full tree was explored
+- `nodesSearched`: Nodes evaluated so far
 
 ### Solver
 Main algorithm:
@@ -135,38 +159,96 @@ Automated testing:
 - Statistics collection
 - Win rate calculation
 
+## Web Architecture
+
+### JavaScript Modules
+
+The web GUI (`docs/`) is a pure client-side application:
+
+```
+docs/
+├── js/
+│   ├── app.js           # Main controller (mode switching, event handling)
+│   ├── ui.js            # DOM rendering, probability overlays, animations
+│   ├── board.js         # Board model (mirrors C++ Board)
+│   ├── boardTypes.js    # Board type data (80 types, N_accepted)
+│   ├── solver.js        # JS solver (probabilities, iterative deepening)
+│   ├── generator.js     # Random board generation
+│   ├── solver-worker.js # Web Worker (dispatches JS or WASM solver)
+│   ├── solver-wasm.js   # Emscripten WASM loader (generated)
+│   └── voltorb_wasm.wasm # Compiled C++ solver (generated)
+├── wasm/
+│   └── solver_bindings.cpp  # C++ Emscripten bindings (source)
+├── css/
+│   ├── style.css        # Main pixel-art styling
+│   └── docs.css         # Algorithm documentation page styling
+├── index.html           # Main page
+└── algorithm.html       # Algorithm documentation page
+```
+
+### Web Worker Architecture
+
+The solver runs in a **Web Worker** to keep the UI thread responsive:
+
+```
+Main Thread (app.js)          Worker Thread (solver-worker.js)
+       |                               |
+       |--- postMessage({solve}) ----->|
+       |                               |--- JS solver or WASM solver
+       |<-- postMessage({progress}) ---|    (posts 'progress' at each depth)
+       |<-- postMessage({progress}) ---|
+       |<-- postMessage({complete}) ---|
+       |                               |
+  UI updates on each message
+```
+
+### WASM Integration
+
+The WASM module (`solver_bindings.cpp`) exposes two functions:
+
+1. **`solveBoard()`** — original blocking call, returns final result only
+2. **`solveBoardWithProgress()`** — accepts a JS callback that is called at each completed depth level with `{bestPanel, winProbability, depth, isExact, nodesSearched}`
+
+The worker detects which function is available and uses `solveBoardWithProgress` when possible, falling back to `solveBoard` for backward compatibility.
+
+Probabilities and safe panels are computed in JS (fast, using the same Bayesian inference) before the WASM search begins, so progress messages include full probability data from depth 1 onward.
+
 ## Data Flow
 
 ```
-User Input → GameSession
+User Input → GameSession (or Web UI)
                  ↓
            BoardGenerator → Board (actual)
                  ↓
-           Board (covered) → Solver
+           Board (covered) → Solver / Web Worker
                                 ↓
                         CompatibleBoardGenerator
                                 ↓
                         ProbabilityCalculator
                                 ↓
-                        Minimax Recursion
-                                ↓
+                        Minimax Recursion (iterative deepening)
+                                ↓ (progress at each depth)
                         SolverResult
                                 ↓
-           GameSession ← Suggested Panel
+           GameSession / UI ← Suggested Panel + Probabilities
                  ↓
            User Output
 ```
+
+In the web GUI, this flow runs inside a Web Worker. The WASM path replaces the minimax recursion step with the compiled C++ solver, while probability calculation happens in JS.
 
 ## Performance Considerations
 
 ### Memory
 - Compatible boards can be large (millions)
 - Memoization cache grows with search depth (fresh per depth iteration)
+- WASM transposition table: ~8MB (256K entries)
 
 ### Time
 - Exhaustive search: exponential in unknown panels
 - Iterative deepening: bounded by depth limit and timeout
 - Free panel detection: early termination
+- WASM: ~2-5x faster than JS for the minimax search
 
 ### Parallelism
 - Board enumeration: parallelizable per type
