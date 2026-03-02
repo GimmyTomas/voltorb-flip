@@ -42,7 +42,7 @@ val solveBoard(int level, val panels,
     SolverOptions opts;
     opts.timeout = std::chrono::milliseconds(timeout);
     opts.maxCompatibleBoards = static_cast<size_t>(maxBoards);
-    opts.transpositionTableSize = 1 << 18;  // ~8MB, suitable for browser
+    opts.transpositionTableSize = 1 << 20;  // 1M entries, matching native default
 
     // Run solver
     Solver solver(opts);
@@ -154,7 +154,7 @@ val solveBoardWithProgress(int level, val panels,
     SolverOptions opts;
     opts.timeout = std::chrono::milliseconds(timeout);
     opts.maxCompatibleBoards = static_cast<size_t>(maxBoards);
-    opts.transpositionTableSize = 1 << 18;  // ~8MB, suitable for browser
+    opts.transpositionTableSize = 1 << 20;  // 1M entries, matching native default
 
     // Build C++ progress callback that calls into JS
     Solver solver(opts);

@@ -361,7 +361,7 @@ export function generateCompatibleBoards(board, maxBoards = 500000) {
     return compatibleBoards;
 }
 
-// Group boards by type
+// Group boards by type — assign each board to ALL matching types (with legality check)
 export function groupBoardsByType(boards, level) {
     const groups = [];
     for (let i = 0; i < NUM_TYPES_PER_LEVEL; i++) {
@@ -369,8 +369,23 @@ export function groupBoardsByType(boards, level) {
     }
 
     for (const board of boards) {
-        if (board.generatedType !== undefined) {
-            groups[board.generatedType].push(board);
+        let count0 = 0, count2 = 0, count3 = 0;
+        for (let i = 0; i < BOARD_SIZE; i++) {
+            for (let j = 0; j < BOARD_SIZE; j++) {
+                const v = board.get(i, j);
+                if (v === PanelValue.Voltorb) count0++;
+                else if (v === PanelValue.Two) count2++;
+                else if (v === PanelValue.Three) count3++;
+            }
+        }
+
+        for (let type = 0; type < NUM_TYPES_PER_LEVEL; type++) {
+            const params = getParams(level, type);
+            if (params.n0 === count0 && params.n2 === count2 && params.n3 === count3) {
+                if (isLegal(board, params)) {
+                    groups[type].push(board);
+                }
+            }
         }
     }
 

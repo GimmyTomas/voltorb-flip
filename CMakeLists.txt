@@ -85,7 +85,7 @@ if(VOLTORB_BUILD_WASM AND EMSCRIPTEN)
         -sEXPORT_NAME="VoltorbSolverModule"
         -sENVIRONMENT='worker'
         -sALLOW_MEMORY_GROWTH=1
-        -sINITIAL_MEMORY=33554432
+        -sINITIAL_MEMORY=67108864
         -sMAXIMUM_MEMORY=134217728
     )
     set_target_properties(voltorb_wasm PROPERTIES

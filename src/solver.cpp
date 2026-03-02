@@ -114,8 +114,9 @@ std::optional<SearchState> Solver::initializeSearch(const Board& board) {
         for (BoardTypeIndex type = 0; type < NUM_TYPES_PER_LEVEL; type++) {
             const auto& params = BoardTypeData::params(level, type);
             if (params.n0 == count0 && params.n2 == count2 && params.n3 == count3) {
-                state.indicesPerType[type].push_back(idx);
-                break;
+                if (LegalityChecker::isLegal(cb, params)) {
+                    state.indicesPerType[type].push_back(idx);
+                }
             }
         }
     }
