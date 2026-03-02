@@ -113,21 +113,6 @@ size_t Board::countMultipliersRevealed() const {
 }
 
 size_t Board::totalMultipliersRequired() const {
-    // Calculate from hints: total_sum = n1 + 2*n2 + 3*n3
-    // total_voltorbs = n0
-    // n0 + n1 + n2 + n3 = 25
-    //
-    // We want to return the MINIMUM number of multipliers that could exist,
-    // so we can declare a win as soon as we've revealed at least that many.
-    //
-    // Given: extra = n2 + 2*n3 (extra points beyond 1 per non-voltorb)
-    // total = n2 + n3 (total multipliers)
-    //
-    // Minimum multipliers: when all are 3s -> n3 = extra/2, total = extra/2
-    // Maximum multipliers: when all are 2s -> n2 = extra, total = extra
-    //
-    // For the win condition, we use ceil(extra/2) as the minimum.
-
     int totalSum = 0;
     int totalVoltorbs = 0;
     for (size_t i = 0; i < BOARD_SIZE; i++) {
@@ -135,17 +120,31 @@ size_t Board::totalMultipliersRequired() const {
         totalVoltorbs += rowHints_[i].voltorbCount;
     }
 
-    // extra = total_sum - (25 - n0) = total_sum - 25 + n0
-    int extra = totalSum - static_cast<int>(TOTAL_PANELS) + totalVoltorbs;
+    // extraPoints = total extra points beyond 1 per non-voltorb panel
+    int extraPoints = totalSum - (static_cast<int>(TOTAL_PANELS) - totalVoltorbs);
 
-    if (extra <= 0) {
-        return 0;  // No multipliers needed (all panels are 1s or voltorbs)
+    if (extraPoints <= 0) {
+        return 0;
     }
 
-    // Minimum multipliers = ceil(extra / 2)
-    // This assumes the best case where all multipliers are 3s.
-    // We use this as the threshold for declaring a win.
-    return static_cast<size_t>((extra + 1) / 2);
+    // Count revealed multipliers and their extra point contributions
+    int revealed2s = 0;
+    int revealed3s = 0;
+    for (const auto& row : panels_) {
+        for (const auto& panel : row) {
+            if (panel == PanelValue::Two) revealed2s++;
+            if (panel == PanelValue::Three) revealed3s++;
+        }
+    }
+
+    int revealedExtra = revealed2s + 2 * revealed3s;
+    if (revealedExtra >= extraPoints) {
+        // All extra points accounted for by revealed multipliers
+        return static_cast<size_t>(revealed2s + revealed3s);
+    }
+
+    // Still need more multipliers; worst case each remaining gives +1 (a 2)
+    return static_cast<size_t>(revealed2s + revealed3s + (extraPoints - revealedExtra));
 }
 
 Board Board::withPanelRevealed(Position pos, PanelValue value) const {
