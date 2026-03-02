@@ -10,8 +10,7 @@
 namespace voltorb {
 
 Solver::Solver(SolverOptions options)
-    : options_(std::move(options)),
-      tt_(options_.transpositionTableSize) {
+    : options_(std::move(options)) {
     // Ensure Zobrist tables are initialized
     if (!ZobristHasher::isInitialized()) {
         ZobristHasher::initialize();
@@ -19,8 +18,10 @@ Solver::Solver(SolverOptions options)
 }
 
 void Solver::reset() {
-    tt_.clear();
+    memo_.clear();
     nodesEvaluated_ = 0;
+    cacheHits_ = 0;
+    cacheMisses_ = 0;
     allBoards_.clear();
 }
 
@@ -42,7 +43,8 @@ SolverResult Solver::solve(const Board& board, ProgressCallback onProgress) {
     startTime_ = std::chrono::steady_clock::now();
     timedOut_ = false;
     nodesEvaluated_ = 0;
-    tt_.resetStats();
+    cacheHits_ = 0;
+    cacheMisses_ = 0;
 
     // Check if game is already over
     GameResult gameState = board.checkGameResult();
@@ -137,7 +139,7 @@ SolverResult Solver::iterativeDeepening(const SearchState& initialState,
     auto freePanel = findFreePanel(initialState);
 
     for (int depth = 1; depth <= options_.maxDepth && !timedOut_; depth++) {
-        tt_.clear();  // Fresh TT for each depth, matching JS solver behavior
+        memo_.clear();  // Fresh memo for each depth, matching JS solver behavior
         auto result = depthLimitedSearch(initialState, depth);
 
         bestPanel = result.bestPanel;
@@ -218,12 +220,14 @@ DepthLimitedResult Solver::depthLimitedSearch(const SearchState& state, int dept
         return {{0, 0}, h, false};
     }
 
-    // Check transposition table
-    const TranspositionEntry* ttEntry = tt_.probe(state.zobristHash);
-    if (ttEntry && ttEntry->depth >= static_cast<uint8_t>(depthLimit)) {
-        return {ttEntry->bestPanel, ttEntry->winProbability,
-                ttEntry->flag == TTEntryFlag::Exact};
+    // Check memo table
+    auto it = memo_.find(state.zobristHash);
+    if (it != memo_.end() && it->second.depth >= depthLimit) {
+        cacheHits_++;
+        return {it->second.bestPanel, it->second.winProbability,
+                it->second.fullyExplored};
     }
+    cacheMisses_++;
 
     // Check timeout
     if (checkTimeout()) {
@@ -248,10 +252,12 @@ DepthLimitedResult Solver::depthLimitedSearch(const SearchState& state, int dept
             if (!childResult.fullyExplored) fullyExplored = false;
         }
 
-        // Store in transposition table
-        tt_.store(state.zobristHash, winProb, *freePanel,
-                  static_cast<uint8_t>(depthLimit),
-                  fullyExplored ? TTEntryFlag::Exact : TTEntryFlag::LowerBound);
+        // Store in memo table
+        auto [ins_it, inserted] = memo_.try_emplace(state.zobristHash,
+            MemoEntry{winProb, *freePanel, depthLimit, fullyExplored});
+        if (!inserted && depthLimit > ins_it->second.depth) {
+            ins_it->second = {winProb, *freePanel, depthLimit, fullyExplored};
+        }
 
         return {*freePanel, winProb, fullyExplored};
     }
@@ -304,10 +310,12 @@ DepthLimitedResult Solver::depthLimitedSearch(const SearchState& state, int dept
         }
     }
 
-    // Store in transposition table
-    tt_.store(state.zobristHash, bestWinProb, bestPanel,
-              static_cast<uint8_t>(depthLimit),
-              allFullyExplored ? TTEntryFlag::Exact : TTEntryFlag::LowerBound);
+    // Store in memo table
+    auto [ins_it, inserted] = memo_.try_emplace(state.zobristHash,
+        MemoEntry{bestWinProb, bestPanel, depthLimit, allFullyExplored});
+    if (!inserted && depthLimit > ins_it->second.depth) {
+        ins_it->second = {bestWinProb, bestPanel, depthLimit, allFullyExplored};
+    }
 
     return {bestPanel, bestWinProb, allFullyExplored};
 }

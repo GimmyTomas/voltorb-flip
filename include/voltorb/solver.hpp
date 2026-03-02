@@ -2,7 +2,6 @@
 
 #include "board.hpp"
 #include "sampler.hpp"
-#include "transposition.hpp"
 #include "zobrist.hpp"
 
 #include <chrono>
@@ -87,6 +86,13 @@ struct DepthLimitedResult {
     bool fullyExplored;  // True if search completed without hitting depth limit
 };
 
+struct MemoEntry {
+    double winProbability;
+    Position bestPanel;
+    int depth;
+    bool fullyExplored;
+};
+
 /**
  * Main solver using iterative deepening with minimax.
  *
@@ -141,8 +147,8 @@ public:
     /**
      * Get statistics.
      */
-    size_t getCacheHits() const { return tt_.getHits(); }
-    size_t getCacheMisses() const { return tt_.getMisses(); }
+    size_t getCacheHits() const { return cacheHits_; }
+    size_t getCacheMisses() const { return cacheMisses_; }
     size_t getNodesEvaluated() const { return nodesEvaluated_; }
 
     /**
@@ -158,10 +164,12 @@ public:
 
 private:
     SolverOptions options_;
-    TranspositionTable tt_;
+    std::unordered_map<uint64_t, MemoEntry> memo_;
 
     // Statistics
     size_t nodesEvaluated_ = 0;
+    size_t cacheHits_ = 0;
+    size_t cacheMisses_ = 0;
 
     // Timeout tracking
     std::chrono::steady_clock::time_point startTime_;
