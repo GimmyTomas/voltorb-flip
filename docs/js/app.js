@@ -534,6 +534,15 @@ class App {
     // Start auto-play
     startAutoPlay() {
         if (this.isPlaying) return;
+
+        // Cancel any running async solver to avoid competing with self-play
+        if (this.solverWorker) {
+            this.solverWorker.terminate();
+            this.solverWorker = null;
+        }
+        this.solverRunning = false;
+        this.ui.setPauseEnabled(false);
+
         if (!this.solutionBoard) {
             this.newGame();
         }
