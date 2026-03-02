@@ -7,7 +7,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BUILD_DIR="$SCRIPT_DIR/build_wasm"
 OUTPUT_JS="$SCRIPT_DIR/docs/js/solver-wasm.js"
-OUTPUT_WASM="$SCRIPT_DIR/docs/js/solver-wasm.wasm"
+OUTPUT_WASM="$SCRIPT_DIR/docs/js/voltorb_wasm.wasm"
 
 echo "==> Configuring WASM build..."
 mkdir -p "$BUILD_DIR"
