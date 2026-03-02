@@ -527,7 +527,7 @@ P(T5 | board) = 5.59 / (4.57 + 5.59) = 55.0%
                     dominate this overestimate.
                 </div>
 
-                <h4>Upper Bound (Conjecture)</h4>
+                <h4>Upper Bound Estimator</h4>
                 <p>
                     <strong>Formula</strong>: h<sub>upper</sub>(s) = &prod;(1 &minus; p<sub>voltorb</sub>[i])
                     for the safest M<sub>min</sub> panels with multiplier potential, where
@@ -536,28 +536,21 @@ P(T5 | board) = 5.59 / (4.57 + 5.59) = 55.0%
                     h<sub>upper</sub> = 1.0 (empty product).
                 </p>
                 <p>
-                    <strong>Why h<sub>upper</sub>(s) &ge; V*(s)</strong> (same conjecture status as the lower bound):
+                    This is an <strong>estimator</strong> that usually overestimates V*(s), making it a
+                    practical upper bound in most cases. However, counterexamples exist where the true win
+                    probability slightly exceeds h<sub>upper</sub>(s), so it is <strong>not</strong> a
+                    rigorous upper bound.
                 </p>
                 <p>
-                    The upper bound mirrors the lower bound but with an optimistic panel count. Both bounds
-                    use the same sorted voltorb probabilities; they differ only in how many panels to survive:
+                    The estimator uses the most optimistic panel count (M<sub>min</sub> &mdash; the fewest
+                    multipliers the player could need to survive) combined with the safest voltorb
+                    probabilities, which tends to produce a value above V*(s). It is more informative and
+                    converges faster than the trivial h=1.0 fallback used at depth-limited leaves.
                 </p>
-                <ol>
-                    <li><strong>Undercounting</strong>: M<sub>min</sub> uses the minimum unrevealed multipliers
-                        across compatible boards, so the player needs to survive fewer panels than in reality
-                        (unless the best-case board is the actual one). Fewer panels to survive means a higher
-                        product and higher estimate.</li>
-                    <li><strong>No information gain</strong>: Same as the lower bound &mdash; the heuristic uses
-                        fixed marginal probabilities, while optimal play adapts after each reveal.</li>
-                    <li><strong>Product-of-marginals overestimates</strong>: The product of marginal survival
-                        probabilities overestimates joint survival due to negative correlation in voltorb
-                        placement. This reinforces the upper bound direction (makes it higher).</li>
-                </ol>
-                <div class="note-box">
-                    <strong>Caveat</strong>: Like the lower bound, this is supported by strong structural
-                    arguments and extensive empirical testing, but is not a rigorous proof. When the search
-                    is exact (fully explored), both bounds converge to the true value.
-                </div>
+                <p>
+                    When the search is exact (fully explored), the estimator is not used and the computed
+                    value equals V*(s) exactly.
+                </p>
             </section>
 
             <!-- Implementation Notes -->
