@@ -50,7 +50,7 @@ Features:
 - Assistant mode: enter hints from the real game and get optimal move suggestions
 - Self-play demo: watch the solver play automatically
 - Live probability overlays with color-coded safety bars
-- Choice of JS or WASM solver engine
+- Choice of WASM (default) or JS solver engine
 - Progressive depth updates showing improving results in real time
 
 No server required — runs entirely client-side.
@@ -127,7 +127,7 @@ voltorb-flip/
 | 4-6   | 100ms-5s          | 200ms-5s       | Exact or depth-limited |
 | 7-8   | 1s-5s             | 1s-10s         | Depth-limited, improving |
 
-The solver uses iterative deepening with a configurable timeout (default 30s in web GUI). Each depth iteration improves the result, and the WASM engine runs at near-native speed.
+The solver uses iterative deepening with a configurable timeout (default 60s in web GUI). Each depth iteration improves the result, and the WASM engine runs at near-native speed.
 
 ## Requirements
 

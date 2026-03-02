@@ -23,9 +23,10 @@ class App {
         this.autoSolve = false;
 
         // Solver settings
-        this.solverTimeout = 30000;
-        this.useWasm = false;
+        this.solverTimeout = 60000;
+        this.useWasm = true;
         this.solverWorker = null;
+        this.solverRunning = false;
 
         // Self-play state
         this.isPlaying = false;
@@ -33,6 +34,11 @@ class App {
         this.speed = 5; // 1-10
 
         this.setupCallbacks();
+
+        // Preload WASM engine
+        this.solverWorker = this.createWorker();
+        this.solverWorker.postMessage({ type: 'preloadWasm' });
+
         this.initializeAssistantMode();
     }
 
@@ -192,6 +198,21 @@ class App {
             this.solverTimeout = timeout;
         };
 
+        // Pause solver
+        this.ui.onPause = () => {
+            if (this.solverWorker) {
+                this.solverWorker.terminate();
+                this.solverWorker = null;
+            }
+            this.solverRunning = false;
+            this.ui.setPauseEnabled(false);
+            if (this.autoSolve) {
+                this.autoSolve = false;
+                this.ui.setAutoSolve(false);
+            }
+            this.updateDisplay();
+        };
+
         // Solver backend change
         this.ui.onSolverBackendChange = (backend) => {
             this.useWasm = (backend === 'wasm');
@@ -339,6 +360,8 @@ class App {
                 this.solverResult = e.data.result;
                 this.updateDisplay();
             } else if (type === 'complete') {
+                this.solverRunning = false;
+                this.ui.setPauseEnabled(false);
                 this.solverResult = e.data.result;
                 const r = this.solverResult;
                 console.log(`Solver completed in ${r.computeTime.toFixed(1)}ms`);
@@ -347,6 +370,8 @@ class App {
                 console.log(`Win probability: ${(r.winProbability * 100).toFixed(1)}%`);
                 this.updateDisplay();
             } else if (type === 'error') {
+                this.solverRunning = false;
+                this.ui.setPauseEnabled(false);
                 console.error('Solver error:', e.data.message);
             } else if (type === 'wasmReady') {
                 this.ui.setWasmAvailable(true);
@@ -362,6 +387,8 @@ class App {
         };
 
         worker.onerror = (err) => {
+            this.solverRunning = false;
+            this.ui.setPauseEnabled(false);
             console.error('Worker error:', err);
         };
 
@@ -377,6 +404,9 @@ class App {
         }
 
         console.log('Running solver...');
+
+        this.solverRunning = true;
+        this.ui.setPauseEnabled(true);
 
         this.solverWorker = this.createWorker();
         this.solverWorker.postMessage({
@@ -417,7 +447,7 @@ class App {
             this.ui.updateWinProbability(this.solverResult.winProbability, {
                 isExact: this.solverResult.isExact,
                 depth: this.solverResult.depth
-            });
+            }, this.solverRunning);
 
             // Update suggestion
             const isSafe = suggested && safePanels.some(p =>

@@ -23,6 +23,7 @@ export class UI {
         this.suggestionValue = document.getElementById('suggestionValue');
         this.solveBtn = document.getElementById('solveBtn');
         this.autoSolveBtn = document.getElementById('autoSolveBtn');
+        this.pauseBtn = document.getElementById('pauseBtn');
         this.undoBtn = document.getElementById('undoBtn');
         this.resetBtn = document.getElementById('resetBtn');
 
@@ -69,6 +70,7 @@ export class UI {
         this.onProbDisplayModeChange = null;
         this.onTimeoutChange = null;
         this.onSolverBackendChange = null;
+        this.onPause = null;
 
         // State
         this.selectedTile = null;
@@ -126,6 +128,10 @@ export class UI {
 
         this.autoSolveBtn.addEventListener('click', () => {
             if (this.onAutoSolveToggle) this.onAutoSolveToggle();
+        });
+
+        this.pauseBtn.addEventListener('click', () => {
+            if (this.onPause) this.onPause();
         });
 
         this.undoBtn.addEventListener('click', () => {
@@ -273,24 +279,28 @@ export class UI {
                             const overlay = document.createElement('div');
                             overlay.className = 'prob-overlay';
 
-                            const bar = document.createElement('div');
-                            bar.className = 'prob-bar';
-
                             const safePercent = (1 - prob.pVoltorb) * 100;
-                            bar.style.width = `${safePercent}%`;
 
-                            // Color based on voltorb probability
-                            if (prob.pVoltorb === 0) {
-                                bar.classList.add('safe');
-                            } else if (prob.pVoltorb < 0.25) {
-                                bar.classList.add('low-risk');
-                            } else if (prob.pVoltorb < 0.5) {
-                                bar.classList.add('medium-risk');
-                            } else {
-                                bar.classList.add('high-risk');
+                            // Skip colored bar entirely when ~100% Voltorb to avoid red sliver
+                            if (safePercent >= 0.5) {
+                                const bar = document.createElement('div');
+                                bar.className = 'prob-bar';
+                                bar.style.width = `${safePercent}%`;
+
+                                // Color based on voltorb probability
+                                if (prob.pVoltorb === 0) {
+                                    bar.classList.add('safe');
+                                } else if (prob.pVoltorb < 0.25) {
+                                    bar.classList.add('low-risk');
+                                } else if (prob.pVoltorb < 0.5) {
+                                    bar.classList.add('medium-risk');
+                                } else {
+                                    bar.classList.add('high-risk');
+                                }
+
+                                overlay.appendChild(bar);
                             }
 
-                            overlay.appendChild(bar);
                             tile.appendChild(overlay);
 
                             // Add probability text on hover
@@ -455,7 +465,7 @@ export class UI {
     }
 
     // Update win probability display
-    updateWinProbability(prob, solverInfo = null) {
+    updateWinProbability(prob, solverInfo = null, searching = false) {
         if (prob === null || prob === undefined) {
             this.winProbValue.textContent = '--';
             this.winProbFill.style.width = '0%';
@@ -471,6 +481,9 @@ export class UI {
                 if (solverInfo.isExact) {
                     this.solverStatus.textContent = 'Exact';
                     this.solverStatus.className = 'solver-status exact';
+                } else if (searching) {
+                    this.solverStatus.textContent = `Depth ${solverInfo.depth}...`;
+                    this.solverStatus.className = 'solver-status searching';
                 } else {
                     this.solverStatus.textContent = `Depth ${solverInfo.depth}`;
                     this.solverStatus.className = 'solver-status approximate';
@@ -603,6 +616,11 @@ export class UI {
     setAutoSolve(enabled) {
         this.autoSolveBtn.classList.toggle('active', enabled);
         this.solveBtn.disabled = enabled;
+    }
+
+    // Enable/disable pause button
+    setPauseEnabled(enabled) {
+        this.pauseBtn.disabled = !enabled;
     }
 
     // Animate tile reveal

@@ -12,9 +12,11 @@ A web-based GUI for the Voltorb Flip solver with pixel-art styling, live probabi
 - **Live probabilities**: Show P(Voltorb) for each panel with color-coded bars
 - **Win probability** estimate display
 - **Safe panel detection**: Guaranteed-safe panels highlighted in green
-- **WASM solver backend**: C++ solver compiled to WebAssembly for near-native speed
+- **WASM solver backend** (default): C++ solver compiled to WebAssembly for near-native speed
 - **Progressive depth updates**: See solver results improve in real time at each search depth
-- **Solver settings**: Configurable timeout (up to 120s) and JS/WASM engine toggle
+- **Search status indicator**: Pulsing badge while searching, static when complete (Exact or Depth N)
+- **Pause button**: Stop the solver mid-search and keep current results
+- **Solver settings**: Configurable timeout (5s–120s, default 60s) and WASM/JS engine toggle with info tooltips
 - **Undo support**: Revert previous moves
 - **Responsive design**: Works on desktop and mobile
 
@@ -47,8 +49,10 @@ Watch the solver play automatically:
 
 ### Solver Settings
 
-- **Timeout slider**: Adjust the search time limit (default 30s, max 120s)
-- **Engine toggle**: Switch between JS (pure JavaScript) and WASM (WebAssembly) solver backends
+- **Timeout**: Adjust the search time limit (5s, 10s, 30s, 60s default, 120s, or no limit). Hover the ⓘ icon for details.
+- **Engine toggle**: Switch between WASM (default, near-native speed) and JS (pure JavaScript) solver backends. Hover the ⓘ icon for details.
+- **Pause**: Stop the solver mid-search and keep the best result found so far. Also turns off Auto if active.
+- **Search status**: The badge next to "Win Probability" pulses while searching (e.g. "Depth 3...") and goes static when complete ("Exact" or "Depth N").
 
 ## Probability Display
 

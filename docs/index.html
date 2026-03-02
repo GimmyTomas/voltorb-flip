@@ -80,6 +80,7 @@
                     <div class="solve-buttons">
                         <button id="solveBtn" class="control-btn solver-btn">Solve</button>
                         <button id="autoSolveBtn" class="control-btn solver-btn">Auto</button>
+                        <button id="pauseBtn" class="control-btn solver-btn" disabled>Pause</button>
                     </div>
 
                     <div class="win-prob-section">
@@ -103,19 +104,21 @@
                     <div class="solver-settings-row">
                         <span class="prob-toggle-label">Timeout:</span>
                         <select id="timeoutSelect">
-                            <option value="2000">2s</option>
                             <option value="5000">5s</option>
-                            <option value="15000">15s</option>
-                            <option value="30000" selected>30s</option>
-                            <option value="60000">60s</option>
+                            <option value="10000">10s</option>
+                            <option value="30000">30s</option>
+                            <option value="60000" selected>60s</option>
+                            <option value="120000">120s</option>
                             <option value="600000">No limit</option>
                         </select>
+                        <span class="info-tooltip" data-tooltip="Maximum time the solver will search. Longer timeouts may find better moves on complex boards.">&#9432;</span>
                     </div>
                     <div class="backend-toggle">
                         <span class="prob-toggle-label">Engine:</span>
-                        <button id="jsBackendBtn" class="prob-toggle-btn active">JS</button>
-                        <button id="wasmBackendBtn" class="prob-toggle-btn">WASM</button>
+                        <button id="wasmBackendBtn" class="prob-toggle-btn active">WASM</button>
+                        <button id="jsBackendBtn" class="prob-toggle-btn">JS</button>
                         <span id="wasmStatus" class="wasm-status"></span>
+                        <span class="info-tooltip" data-tooltip="WASM compiles the C++ solver to run in your browser at near-native speed. JS is a pure JavaScript implementation. WASM is faster for most boards.">&#9432;</span>
                     </div>
                     <div class="prob-toggle">
                         <span class="prob-toggle-label">Display:</span>

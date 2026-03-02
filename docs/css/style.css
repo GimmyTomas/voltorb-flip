@@ -550,6 +550,59 @@ main {
     color: #fff;
 }
 
+/* Info tooltips */
+.info-tooltip {
+    position: relative;
+    cursor: help;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.5);
+    line-height: 1;
+}
+
+.info-tooltip:hover {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.info-tooltip::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 220px;
+    padding: 8px 10px;
+    background: var(--panel-bg);
+    border: 2px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--text-color);
+    white-space: normal;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 10;
+}
+
+.info-tooltip::before {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 2px);
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: var(--border-color);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 10;
+}
+
+.info-tooltip:hover::after,
+.info-tooltip:hover::before {
+    opacity: 1;
+}
+
 /* Win Probability */
 .win-prob-label, .suggestion-label, .legend-title {
     font-size: 12px;
@@ -588,6 +641,18 @@ main {
 .solver-status.approximate {
     background: var(--medium-risk-color);
     color: #000;
+}
+
+.solver-status.searching {
+    background: var(--medium-risk-color);
+    color: #000;
+    animation: solver-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes solver-pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
 }
 
 .win-prob-value {
