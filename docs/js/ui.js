@@ -19,6 +19,7 @@ export class UI {
         this.levelSelect = document.getElementById('levelSelect');
         this.winProbValue = document.getElementById('winProbValue');
         this.winProbFill = document.getElementById('winProbFill');
+        this.winProbUpperFill = document.getElementById('winProbUpperFill');
         this.solverStatus = document.getElementById('solverStatus');
         this.suggestionValue = document.getElementById('suggestionValue');
         this.solveBtn = document.getElementById('solveBtn');
@@ -587,10 +588,35 @@ export class UI {
         if (prob === null || prob === undefined) {
             this.winProbValue.textContent = '--';
             this.winProbFill.style.width = '0%';
+            if (this.winProbUpperFill) {
+                this.winProbUpperFill.style.width = '0%';
+            }
         } else {
-            const percent = Math.round(prob * 100);
-            this.winProbValue.textContent = `${percent}%`;
-            this.winProbFill.style.width = `${percent}%`;
+            const percent = (prob * 100).toFixed(1);
+            const probUpper = solverInfo?.winProbabilityUpper;
+            const isExact = solverInfo?.isExact;
+
+            // Display: single value when exact or no upper bound; range otherwise
+            if (isExact || probUpper === undefined || probUpper === null ||
+                Math.abs(prob - probUpper) < 0.0005) {
+                this.winProbValue.textContent = `${percent}%`;
+            } else {
+                const percentUpper = (probUpper * 100).toFixed(1);
+                this.winProbValue.textContent = `${percent}% ~ ${percentUpper}%`;
+            }
+
+            // Bar: lower bound as solid fill
+            this.winProbFill.style.width = `${parseFloat(percent)}%`;
+
+            // Upper bound as lighter extension
+            if (this.winProbUpperFill) {
+                if (!isExact && probUpper !== undefined && probUpper !== null && probUpper > prob) {
+                    const upperPercent = (probUpper * 100).toFixed(1);
+                    this.winProbUpperFill.style.width = `${parseFloat(upperPercent)}%`;
+                } else {
+                    this.winProbUpperFill.style.width = `${parseFloat(percent)}%`;
+                }
+            }
         }
 
         // Update solver status

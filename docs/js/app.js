@@ -367,7 +367,11 @@ class App {
                 console.log(`Solver completed in ${r.computeTime.toFixed(1)}ms`);
                 console.log(`Compatible boards: ${r.compatibleCount}`);
                 console.log(`Safe panels: ${r.safePanels.length}`);
-                console.log(`Win probability: ${(r.winProbability * 100).toFixed(1)}%`);
+                if (r.isExact || r.winProbabilityUpper === undefined) {
+                    console.log(`Win probability: ${(r.winProbability * 100).toFixed(1)}%`);
+                } else {
+                    console.log(`Win probability: ${(r.winProbability * 100).toFixed(1)}% ~ ${(r.winProbabilityUpper * 100).toFixed(1)}%`);
+                }
                 this.updateDisplay();
             } else if (type === 'error') {
                 this.solverRunning = false;
@@ -446,7 +450,8 @@ class App {
         if (this.solverResult) {
             this.ui.updateWinProbability(this.solverResult.winProbability, {
                 isExact: this.solverResult.isExact,
-                depth: this.solverResult.depth
+                depth: this.solverResult.depth,
+                winProbabilityUpper: this.solverResult.winProbabilityUpper
             }, this.solverRunning);
 
             // Update suggestion

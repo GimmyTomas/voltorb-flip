@@ -50,14 +50,14 @@ SolverResult Solver::solve(const Board& board, ProgressCallback onProgress) {
     GameResult gameState = board.checkGameResult();
     if (gameState == GameResult::Won) {
         return {
-            {0, 0}, 1.0, true, 0,
+            {0, 0}, 1.0, 1.0, true, 0,
             std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now() - startTime_),
             0, "Game already won"};
     }
     if (gameState == GameResult::Lost) {
         return {
-            {0, 0}, 0.0, true, 0,
+            {0, 0}, 0.0, 0.0, true, 0,
             std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now() - startTime_),
             0, "Game already lost"};
@@ -67,7 +67,7 @@ SolverResult Solver::solve(const Board& board, ProgressCallback onProgress) {
     auto initialState = initializeSearch(board);
     if (!initialState) {
         return {
-            {0, 0}, 0.0, true, 0,
+            {0, 0}, 0.0, 0.0, true, 0,
             std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now() - startTime_),
             0, "No compatible boards found"};
@@ -132,6 +132,7 @@ SolverResult Solver::iterativeDeepening(const SearchState& initialState,
                                         ProgressCallback onProgress) {
     Position bestPanel{0, 0};
     double bestWinProb = 0.0;
+    double bestWinProbUpper = 1.0;
     bool isExact = false;
     int lastDepth = 0;
 
@@ -144,6 +145,7 @@ SolverResult Solver::iterativeDeepening(const SearchState& initialState,
 
         bestPanel = result.bestPanel;
         bestWinProb = result.winProbability;
+        bestWinProbUpper = result.winProbabilityUpper;
         lastDepth = depth;
         isExact = result.fullyExplored;
 
@@ -155,6 +157,7 @@ SolverResult Solver::iterativeDeepening(const SearchState& initialState,
             SolverProgress progress{
                 freePanel ? *freePanel : bestPanel,
                 bestWinProb,
+                bestWinProbUpper,
                 depth,
                 isExact,
                 nodesEvaluated_,
@@ -180,6 +183,7 @@ SolverResult Solver::iterativeDeepening(const SearchState& initialState,
         return {
             *freePanel,
             bestWinProb,
+            bestWinProbUpper,
             isExact,
             initialState.totalCompatible(),
             elapsed,
@@ -199,6 +203,7 @@ SolverResult Solver::iterativeDeepening(const SearchState& initialState,
     return {
         bestPanel,
         bestWinProb,
+        bestWinProbUpper,
         isExact,
         initialState.totalCompatible(),
         elapsed,
@@ -211,13 +216,13 @@ DepthLimitedResult Solver::depthLimitedSearch(const SearchState& state, int dept
 
     // Check for win condition
     if (isWon(state)) {
-        return {{0, 0}, 1.0, true};
+        return {{0, 0}, 1.0, 1.0, true};
     }
 
     // At depth 0, use heuristic evaluation
     if (depthLimit <= 0) {
         double h = heuristicEval(state);
-        return {{0, 0}, h, false};
+        return {{0, 0}, h, 1.0, false};
     }
 
     // Check memo table
@@ -225,13 +230,13 @@ DepthLimitedResult Solver::depthLimitedSearch(const SearchState& state, int dept
     if (it != memo_.end() && it->second.depth >= depthLimit) {
         cacheHits_++;
         return {it->second.bestPanel, it->second.winProbability,
-                it->second.fullyExplored};
+                it->second.winProbabilityUpper, it->second.fullyExplored};
     }
     cacheMisses_++;
 
     // Check timeout
     if (checkTimeout()) {
-        return {{0, 0}, heuristicEval(state), false};
+        return {{0, 0}, heuristicEval(state), 1.0, false};
     }
 
     // Check for free panel
@@ -239,6 +244,7 @@ DepthLimitedResult Solver::depthLimitedSearch(const SearchState& state, int dept
     if (freePanel) {
         // Recurse with the free panel revealed
         double winProb = 0.0;
+        double winProbUpper = 0.0;
         bool fullyExplored = true;
 
         for (int value = 1; value <= 3; value++) {
@@ -249,17 +255,18 @@ DepthLimitedResult Solver::depthLimitedSearch(const SearchState& state, int dept
             auto childResult = depthLimitedSearch(nextState, depthLimit);
 
             winProb += pValue * childResult.winProbability;
+            winProbUpper += pValue * childResult.winProbabilityUpper;
             if (!childResult.fullyExplored) fullyExplored = false;
         }
 
         // Store in memo table
         auto [ins_it, inserted] = memo_.try_emplace(state.zobristHash,
-            MemoEntry{winProb, *freePanel, depthLimit, fullyExplored});
+            MemoEntry{winProb, winProbUpper, *freePanel, depthLimit, fullyExplored});
         if (!inserted && depthLimit > ins_it->second.depth) {
-            ins_it->second = {winProb, *freePanel, depthLimit, fullyExplored};
+            ins_it->second = {winProb, winProbUpper, *freePanel, depthLimit, fullyExplored};
         }
 
-        return {*freePanel, winProb, fullyExplored};
+        return {*freePanel, winProb, winProbUpper, fullyExplored};
     }
 
     // Get unknown panels in heuristic order
@@ -267,11 +274,12 @@ DepthLimitedResult Solver::depthLimitedSearch(const SearchState& state, int dept
 
     if (unknownPanels.empty()) {
         // No unknown panels but not won - shouldn't happen, but handle gracefully
-        return {{0, 0}, 0.0, true};
+        return {{0, 0}, 0.0, 0.0, true};
     }
 
     Position bestPanel = unknownPanels[0];
     double bestWinProb = 0.0;
+    double bestWinProbUpper = 0.0;
     bool allFullyExplored = true;
 
     for (const Position& pos : unknownPanels) {
@@ -283,6 +291,7 @@ DepthLimitedResult Solver::depthLimitedSearch(const SearchState& state, int dept
 
         // Calculate expected win probability for this panel
         double panelWinProb = 0.0;
+        double panelWinProbUpper = 0.0;
         bool panelFullyExplored = true;
 
         for (int value = 1; value <= 3; value++) {
@@ -293,6 +302,7 @@ DepthLimitedResult Solver::depthLimitedSearch(const SearchState& state, int dept
             auto childResult = depthLimitedSearch(nextState, depthLimit - 1);
 
             panelWinProb += pValue * childResult.winProbability;
+            panelWinProbUpper += pValue * childResult.winProbabilityUpper;
             if (!childResult.fullyExplored) panelFullyExplored = false;
         }
 
@@ -301,6 +311,9 @@ DepthLimitedResult Solver::depthLimitedSearch(const SearchState& state, int dept
         if (panelWinProb > bestWinProb) {
             bestWinProb = panelWinProb;
             bestPanel = pos;
+        }
+        if (panelWinProbUpper > bestWinProbUpper) {
+            bestWinProbUpper = panelWinProbUpper;
         }
 
         // Check timeout periodically
@@ -312,12 +325,12 @@ DepthLimitedResult Solver::depthLimitedSearch(const SearchState& state, int dept
 
     // Store in memo table
     auto [ins_it, inserted] = memo_.try_emplace(state.zobristHash,
-        MemoEntry{bestWinProb, bestPanel, depthLimit, allFullyExplored});
+        MemoEntry{bestWinProb, bestWinProbUpper, bestPanel, depthLimit, allFullyExplored});
     if (!inserted && depthLimit > ins_it->second.depth) {
-        ins_it->second = {bestWinProb, bestPanel, depthLimit, allFullyExplored};
+        ins_it->second = {bestWinProb, bestWinProbUpper, bestPanel, depthLimit, allFullyExplored};
     }
 
-    return {bestPanel, bestWinProb, allFullyExplored};
+    return {bestPanel, bestWinProb, bestWinProbUpper, allFullyExplored};
 }
 
 double Solver::heuristicEval(const SearchState& state) {

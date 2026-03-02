@@ -744,30 +744,31 @@ function depthLimitedSearch(state, depthLimit, memo, nodesRef, startTime, timeou
 
     // Timeout check
     if (Date.now() - startTime > timeout) {
-        return { bestPanel: null, winProb: heuristicEval(state), fullyExplored: false };
+        return { bestPanel: null, winProb: heuristicEval(state), winProbUpper: 1.0, fullyExplored: false };
     }
 
     // Win check
     if (isWon(state)) {
-        return { bestPanel: null, winProb: 1.0, fullyExplored: true };
+        return { bestPanel: null, winProb: 1.0, winProbUpper: 1.0, fullyExplored: true };
     }
 
     // Depth limit reached
     if (depthLimit <= 0) {
-        return { bestPanel: null, winProb: heuristicEval(state), fullyExplored: false };
+        return { bestPanel: null, winProb: heuristicEval(state), winProbUpper: 1.0, fullyExplored: false };
     }
 
     // Memoization check
     const memoKey = state.board.compactKey() + '_' + depthLimit;
     if (memo.has(memoKey)) {
         const cached = memo.get(memoKey);
-        return { bestPanel: cached.bestPanel, winProb: cached.winProb, fullyExplored: cached.fullyExplored };
+        return { bestPanel: cached.bestPanel, winProb: cached.winProb, winProbUpper: cached.winProbUpper, fullyExplored: cached.fullyExplored };
     }
 
     // Free panel check
     const freePanel = findFreePanel(state);
     if (freePanel) {
         let winProb = 0;
+        let winProbUpper = 0;
         let fullyExplored = true;
 
         for (let value = 1; value <= 3; value++) {
@@ -778,22 +779,24 @@ function depthLimitedSearch(state, depthLimit, memo, nodesRef, startTime, timeou
             const child = depthLimitedSearch(nextState, depthLimit, memo, nodesRef, startTime, timeout);
 
             winProb += pValue * child.winProb;
+            winProbUpper += pValue * child.winProbUpper;
             if (!child.fullyExplored) fullyExplored = false;
         }
 
-        memo.set(memoKey, { bestPanel: freePanel, winProb, fullyExplored });
-        return { bestPanel: freePanel, winProb, fullyExplored };
+        memo.set(memoKey, { bestPanel: freePanel, winProb, winProbUpper, fullyExplored });
+        return { bestPanel: freePanel, winProb, winProbUpper, fullyExplored };
     }
 
     // Get unknown panels in heuristic order
     const unknownPanels = getOrderedUnknownPanels(state);
 
     if (unknownPanels.length === 0) {
-        return { bestPanel: null, winProb: 0, fullyExplored: true };
+        return { bestPanel: null, winProb: 0, winProbUpper: 0, fullyExplored: true };
     }
 
     let bestPanel = unknownPanels[0];
     let bestWinProb = 0;
+    let bestWinProbUpper = 0;
     let allFullyExplored = true;
 
     for (const pos of unknownPanels) {
@@ -802,6 +805,7 @@ function depthLimitedSearch(state, depthLimit, memo, nodesRef, startTime, timeou
         if (upperBound <= bestWinProb) continue;
 
         let panelWinProb = 0;
+        let panelWinProbUpper = 0;
         let panelFullyExplored = true;
 
         for (let value = 1; value <= 3; value++) {
@@ -812,6 +816,7 @@ function depthLimitedSearch(state, depthLimit, memo, nodesRef, startTime, timeou
             const child = depthLimitedSearch(nextState, depthLimit - 1, memo, nodesRef, startTime, timeout);
 
             panelWinProb += pValue * child.winProb;
+            panelWinProbUpper += pValue * child.winProbUpper;
             if (!child.fullyExplored) panelFullyExplored = false;
         }
 
@@ -821,6 +826,9 @@ function depthLimitedSearch(state, depthLimit, memo, nodesRef, startTime, timeou
             bestWinProb = panelWinProb;
             bestPanel = pos;
         }
+        if (panelWinProbUpper > bestWinProbUpper) {
+            bestWinProbUpper = panelWinProbUpper;
+        }
 
         // Timeout check
         if (Date.now() - startTime > timeout) {
@@ -829,8 +837,8 @@ function depthLimitedSearch(state, depthLimit, memo, nodesRef, startTime, timeou
         }
     }
 
-    memo.set(memoKey, { bestPanel, winProb: bestWinProb, fullyExplored: allFullyExplored });
-    return { bestPanel, winProb: bestWinProb, fullyExplored: allFullyExplored };
+    memo.set(memoKey, { bestPanel, winProb: bestWinProb, winProbUpper: bestWinProbUpper, fullyExplored: allFullyExplored });
+    return { bestPanel, winProb: bestWinProb, winProbUpper: bestWinProbUpper, fullyExplored: allFullyExplored };
 }
 
 /**
@@ -865,6 +873,7 @@ export function* iterativeDeepening(board, compatibleBoards, options = {}) {
         yield {
             bestPanel: freePanel || result.bestPanel,
             winProbability: result.winProb,
+            winProbabilityUpper: result.winProbUpper,
             depth,
             isExact: result.fullyExplored,
             nodesSearched: nodesRef.count,
@@ -943,6 +952,7 @@ export function solve(board, maxBoards = 500000, options = {}) {
     return {
         suggestedPanel,
         winProbability: finalResult?.winProbability ?? 0,
+        winProbabilityUpper: finalResult?.winProbabilityUpper,
         probabilities,
         safePanels,
         compatibleCount: compatibleBoards.length,
@@ -1014,6 +1024,7 @@ export function solveProgressive(board, onProgress, onComplete, maxBoards = 5000
         return {
             suggestedPanel,
             winProbability: progress.winProbability,
+            winProbabilityUpper: progress.winProbabilityUpper,
             probabilities,
             safePanels,
             compatibleCount: compatibleBoards.length,

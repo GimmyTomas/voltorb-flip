@@ -481,6 +481,74 @@ P(T5 | board) = 5.59 / (4.57 + 5.59) = 55.0%
                     The default timeout is 30 seconds. For most boards, the solver reaches an
                     exact solution well within this limit.
                 </p>
+
+                <h3>Approximation Bounds</h3>
+                <p>
+                    When the search is depth-limited (not exact), the solver displays a
+                    <strong>range</strong> (e.g., &ldquo;23.2% ~ 38.5%&rdquo;) representing lower
+                    and upper bounds on the true optimal win probability V*(s).
+                </p>
+
+                <h4>Lower Bound (Conjecture)</h4>
+                <p>
+                    <strong>Claim</strong>: At fixed depth d, the depth-limited win probability
+                    V<sub>d</sub>(s) &le; V*(s).
+                </p>
+                <p>
+                    <strong>Proof structure</strong>: If the heuristic h(s) &le; V*(s) at all leaf
+                    states, then V<sub>d</sub>(s) &le; V*(s) at the root. This follows by standard
+                    induction on the expectimax tree: both expectation (at chance nodes) and max
+                    (at decision nodes) preserve the &le; relation.
+                </p>
+                <p>
+                    <strong>Why h(s) &le; V*(s)</strong> (strong conjecture, not fully rigorous):
+                </p>
+                <p>
+                    The heuristic computes h(s) = &prod;(1 &minus; p<sub>voltorb</sub>[i]) for the
+                    safest N panels with multiplier potential, where N = multipliersNeeded. Three
+                    factors make this &le; V*(s):
+                </p>
+                <ol>
+                    <li><strong>Overcounting</strong>: <code>multipliersNeeded</code> counts positions
+                        where <em>any</em> compatible board has a multiplier. The actual board has
+                        strictly fewer multipliers than this count whenever boards disagree on
+                        multiplier placement.</li>
+                    <li><strong>No information gain</strong>: The heuristic uses fixed marginal
+                        probabilities. The optimal strategy adapts after each reveal &mdash; learning
+                        the board narrows possibilities and can reveal which panels are safe.</li>
+                    <li><strong>No early winning</strong>: The heuristic requires surviving all N
+                        panels. In practice, the game often ends earlier (the actual board may have
+                        fewer multipliers, or remaining panels become provably safe).</li>
+                </ol>
+                <div class="note-box">
+                    <strong>Caveat</strong>: The product of marginals actually <em>overestimates</em>
+                    the joint survival probability (due to negative correlation in voltorb placement).
+                    However, extensive empirical testing confirms that the three factors above
+                    dominate this overestimate.
+                </div>
+
+                <h4>Upper Bound (Rigorous)</h4>
+                <p>
+                    <strong>Claim</strong>: Using h<sub>upper</sub>(s) = 1.0 at leaf nodes produces
+                    V<sub>d</sub><sup>upper</sup>(s) &ge; V*(s).
+                </p>
+                <p><strong>Proof</strong>:</p>
+                <ol>
+                    <li><strong>Base case</strong>: h<sub>upper</sub>(s) = 1.0 &ge; V*(s) since
+                        V* &isin; [0, 1]. &check;</li>
+                    <li><strong>Inductive step at chance nodes</strong>:
+                        E[V<sub>d</sub><sup>upper</sup>(child)] &ge; E[V*(child)] because
+                        V<sub>d</sub><sup>upper</sup> &ge; V* pointwise. &check;</li>
+                    <li><strong>Inductive step at max nodes</strong>:
+                        max<sub>a</sub> E[V<sub>d</sub><sup>upper</sup>|a] &ge;
+                        max<sub>a</sub> E[V*|a] for the same reason. &check;</li>
+                    <li>Therefore V<sub>d</sub><sup>upper</sup>(root) &ge; V*(root). &marker;</li>
+                </ol>
+                <p>
+                    This bound is tight: as depth increases, fewer leaves use h=1, so the upper
+                    bound converges to V*. When the search is exact (fully explored), the upper and
+                    lower bounds are equal.
+                </p>
             </section>
 
             <!-- Implementation Notes -->

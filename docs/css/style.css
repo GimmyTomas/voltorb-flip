@@ -706,7 +706,7 @@ main {
 }
 
 .win-prob-value {
-    font-size: 24px;
+    font-size: clamp(16px, 4vw, 20px);
     font-weight: bold;
     text-align: center;
     margin-bottom: 6px;
@@ -717,9 +717,24 @@ main {
     background: rgba(0, 0, 0, 0.3);
     border-radius: 4px;
     overflow: hidden;
+    position: relative;
+}
+
+.win-prob-upper-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background: linear-gradient(90deg, var(--high-risk-color), var(--medium-risk-color), var(--safe-color));
+    opacity: 0.3;
+    transition: width 0.3s;
+    width: 0%;
 }
 
 .win-prob-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
     height: 100%;
     background: linear-gradient(90deg, var(--high-risk-color), var(--medium-risk-color), var(--safe-color));
     transition: width 0.3s;

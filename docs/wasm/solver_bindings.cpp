@@ -75,6 +75,7 @@ val solveBoard(int level, val panels,
     }
 
     result.set("winProbability", solverResult.winProbability);
+    result.set("winProbabilityUpper", solverResult.winProbabilityUpper);
     result.set("compatibleCount", static_cast<int>(compatibleBoards.size()));
     result.set("capped", capped);
     result.set("depth", solverResult.searchDepth);
@@ -168,6 +169,7 @@ val solveBoardWithProgress(int level, val panels,
             bp.set("col", static_cast<int>(progress.bestPanel.col));
             jsProgress.set("bestPanel", bp);
             jsProgress.set("winProbability", progress.winProbability);
+            jsProgress.set("winProbabilityUpper", progress.winProbabilityUpper);
             jsProgress.set("depth", progress.depth);
             jsProgress.set("isExact", progress.isExact);
             jsProgress.set("nodesSearched", static_cast<int>(progress.nodesSearched));
@@ -203,6 +205,7 @@ val solveBoardWithProgress(int level, val panels,
     }
 
     result.set("winProbability", solverResult.winProbability);
+    result.set("winProbabilityUpper", solverResult.winProbabilityUpper);
     result.set("compatibleCount", static_cast<int>(compatibleBoards.size()));
     result.set("capped", capped);
     result.set("depth", solverResult.searchDepth);

@@ -276,3 +276,37 @@ When result is "Exact":
 - The full game tree was explored
 - Win probability is provably correct
 - Suggested move is provably optimal
+
+### Approximation Bounds
+
+When the search is depth-limited (not exact), the solver displays a **range** (e.g., "23.2% ~ 38.5%") representing lower and upper bounds on the true optimal win probability V*(s).
+
+#### Lower Bound (Conjecture)
+
+**Claim**: At fixed depth d, the depth-limited win probability V_d(s) <= V*(s).
+
+**Proof structure**: If the heuristic h(s) <= V*(s) at all leaf states, then V_d(s) <= V*(s) at the root. This follows by standard induction on the expectimax tree: both expectation (at chance nodes) and max (at decision nodes) preserve the <= relation.
+
+**Why h(s) <= V*(s)** (strong conjecture, not fully rigorous):
+
+The heuristic computes h(s) = product of (1 - p_voltorb[i]) for the safest N panels with multiplier potential, where N = multipliersNeeded. Three factors make this <= V*(s):
+
+1. **Overcounting**: `multipliersNeeded` counts positions where ANY compatible board has a multiplier. The actual board has strictly fewer multipliers than this count whenever boards disagree on multiplier placement. More panels to survive means a lower product and lower estimate.
+
+2. **No information gain**: The heuristic uses fixed marginal probabilities. The optimal strategy adapts after each reveal -- learning the board narrows possibilities and can reveal which panels are safe.
+
+3. **No early winning**: The heuristic requires surviving all N panels. In practice, the game often ends before all N are revealed (the actual board may have fewer multipliers, or the last few panels might be provably safe after partial information).
+
+**Caveat**: The product of marginals actually *overestimates* the joint survival probability (due to negative correlation in voltorb placement -- if one panel is safe, others are more likely to be voltorbs). However, extensive empirical testing across thousands of game states confirms that the three factors above dominate this overestimate.
+
+#### Upper Bound (Rigorous)
+
+**Claim**: Using h_upper(s) = 1.0 at leaf nodes produces V_d_upper(s) >= V*(s).
+
+**Proof**:
+1. Base case: h_upper(s) = 1.0 >= V*(s) since V* is in [0, 1]. (check)
+2. Inductive step at chance nodes: E[V_d_upper(child)] >= E[V*(child)] because V_d_upper >= V* pointwise. (check)
+3. Inductive step at max nodes: max_a E[V_d_upper|a] >= max_a E[V*|a] for the same reason. (check)
+4. Therefore V_d_upper(root) >= V*(root). QED
+
+This bound is tight: as depth increases, fewer leaves use h=1, so the upper bound converges to V*. When the search is exact (fully explored), the upper and lower bounds are equal.

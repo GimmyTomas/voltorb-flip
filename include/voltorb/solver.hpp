@@ -18,6 +18,7 @@ namespace voltorb {
 struct SolverResult {
     Position suggestedPosition;
     double winProbability;
+    double winProbabilityUpper;  // Upper bound on win probability (h=1 at leaves)
     bool isExact;         // true = fully searched, false = depth-limited
     size_t boardsEvaluated;
     std::chrono::milliseconds computeTime;
@@ -34,6 +35,7 @@ struct SolverResult {
 struct SolverProgress {
     Position bestPanel;
     double winProbability;
+    double winProbabilityUpper;  // Upper bound on win probability
     int depth;            // Current search depth
     bool isExact;         // True when fully converged (no depth limit hit)
     size_t nodesSearched; // Nodes evaluated so far
@@ -83,11 +85,13 @@ struct SearchState {
 struct DepthLimitedResult {
     Position bestPanel;
     double winProbability;
+    double winProbabilityUpper;  // Upper bound (h=1 at leaves)
     bool fullyExplored;  // True if search completed without hitting depth limit
 };
 
 struct MemoEntry {
     double winProbability;
+    double winProbabilityUpper;
     Position bestPanel;
     int depth;
     bool fullyExplored;

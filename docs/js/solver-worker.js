@@ -64,6 +64,7 @@ function buildResult(progress, probabilities, safePanels, compatibleCount, cappe
     return {
         suggestedPanel,
         winProbability: progress.winProbability,
+        winProbabilityUpper: progress.winProbabilityUpper,
         probabilities,
         safePanels,
         compatibleCount,
@@ -246,6 +247,7 @@ async function solveWASM(boardData, options) {
         const finalProgress = {
             bestPanel: wasmResult.suggestedPanel,
             winProbability: wasmResult.winProbability,
+            winProbabilityUpper: wasmResult.winProbabilityUpper,
             depth: wasmResult.depth,
             isExact: wasmResult.isExact,
             reason: wasmResult.reason
