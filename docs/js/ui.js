@@ -77,8 +77,6 @@ export class UI {
         this.selectedHint = null;
         this.probDisplayMode = 'voltorb'; // 'detailed', 'voltorb', 'none'
         this.currentMode = 'selfplay'; // track current mode for hint rendering
-        this._pendingTabForward = false;
-        this._pendingTabBackward = false;
 
         this.setupEventListeners();
     }
@@ -240,25 +238,9 @@ export class UI {
         const inputs = document.querySelectorAll(selector);
         for (const input of inputs) {
             if (input.dataset.hintType === saved.type && input.dataset.hintIndex === saved.index) {
-                if (this._pendingTabForward || this._pendingTabBackward) {
-                    // Focus the next/previous input by tabindex
-                    const currentTab = input.tabIndex;
-                    const targetTab = this._pendingTabForward ? currentTab + 1 : currentTab - 1;
-                    this._pendingTabForward = false;
-                    this._pendingTabBackward = false;
-                    const allInputs = document.querySelectorAll('.hint-sum-input, .hint-voltorb-input');
-                    for (const candidate of allInputs) {
-                        if (candidate.tabIndex === targetTab) {
-                            candidate.focus();
-                            return;
-                        }
-                    }
-                    // Past last/first input — don't force focus anywhere
-                } else {
-                    input.focus();
-                    if (saved.selectionStart !== undefined) {
-                        input.setSelectionRange(saved.selectionStart, saved.selectionEnd);
-                    }
+                input.focus();
+                if (saved.selectionStart !== undefined) {
+                    input.setSelectionRange(saved.selectionStart, saved.selectionEnd);
                 }
                 break;
             }
@@ -499,11 +481,24 @@ export class UI {
             sumInput.addEventListener('change', handleChange);
             voltorbInput.addEventListener('change', handleChange);
 
-            // Track Tab key during change events so focus advances after re-render
+            // Handle Tab manually: preventDefault stops the browser's native focus advance,
+            // blur triggers change → DOM rebuild, then setTimeout focuses the next input.
             const handleKeydown = (e) => {
                 if (e.key === 'Tab') {
-                    this._pendingTabForward = !e.shiftKey;
-                    this._pendingTabBackward = e.shiftKey;
+                    e.preventDefault();
+                    const currentTabIndex = e.target.tabIndex;
+                    const forward = !e.shiftKey;
+                    e.target.blur(); // triggers change → DOM rebuild if value changed
+                    setTimeout(() => {
+                        const targetTab = forward ? currentTabIndex + 1 : currentTabIndex - 1;
+                        const allInputs = document.querySelectorAll('.hint-sum-input, .hint-voltorb-input');
+                        for (const candidate of allInputs) {
+                            if (candidate.tabIndex === targetTab) {
+                                candidate.focus();
+                                return;
+                            }
+                        }
+                    }, 0);
                 }
             };
             sumInput.addEventListener('keydown', handleKeydown);
