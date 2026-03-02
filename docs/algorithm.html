@@ -527,28 +527,37 @@ P(T5 | board) = 5.59 / (4.57 + 5.59) = 55.0%
                     dominate this overestimate.
                 </div>
 
-                <h4>Upper Bound (Rigorous)</h4>
+                <h4>Upper Bound (Conjecture)</h4>
                 <p>
-                    <strong>Claim</strong>: Using h<sub>upper</sub>(s) = 1.0 at leaf nodes produces
-                    V<sub>d</sub><sup>upper</sup>(s) &ge; V*(s).
+                    <strong>Formula</strong>: h<sub>upper</sub>(s) = &prod;(1 &minus; p<sub>voltorb</sub>[i])
+                    for the safest M<sub>min</sub> panels with multiplier potential, where
+                    M<sub>min</sub> = minimum unrevealed multipliers across all compatible boards.
+                    If M<sub>min</sub> = 0 (some board has all multipliers already revealed),
+                    h<sub>upper</sub> = 1.0 (empty product).
                 </p>
-                <p><strong>Proof</strong>:</p>
+                <p>
+                    <strong>Why h<sub>upper</sub>(s) &ge; V*(s)</strong> (same conjecture status as the lower bound):
+                </p>
+                <p>
+                    The upper bound mirrors the lower bound but with an optimistic panel count. Both bounds
+                    use the same sorted voltorb probabilities; they differ only in how many panels to survive:
+                </p>
                 <ol>
-                    <li><strong>Base case</strong>: h<sub>upper</sub>(s) = 1.0 &ge; V*(s) since
-                        V* &isin; [0, 1]. &check;</li>
-                    <li><strong>Inductive step at chance nodes</strong>:
-                        E[V<sub>d</sub><sup>upper</sup>(child)] &ge; E[V*(child)] because
-                        V<sub>d</sub><sup>upper</sup> &ge; V* pointwise. &check;</li>
-                    <li><strong>Inductive step at max nodes</strong>:
-                        max<sub>a</sub> E[V<sub>d</sub><sup>upper</sup>|a] &ge;
-                        max<sub>a</sub> E[V*|a] for the same reason. &check;</li>
-                    <li>Therefore V<sub>d</sub><sup>upper</sup>(root) &ge; V*(root). &marker;</li>
+                    <li><strong>Undercounting</strong>: M<sub>min</sub> uses the minimum unrevealed multipliers
+                        across compatible boards, so the player needs to survive fewer panels than in reality
+                        (unless the best-case board is the actual one). Fewer panels to survive means a higher
+                        product and higher estimate.</li>
+                    <li><strong>No information gain</strong>: Same as the lower bound &mdash; the heuristic uses
+                        fixed marginal probabilities, while optimal play adapts after each reveal.</li>
+                    <li><strong>Product-of-marginals overestimates</strong>: The product of marginal survival
+                        probabilities overestimates joint survival due to negative correlation in voltorb
+                        placement. This reinforces the upper bound direction (makes it higher).</li>
                 </ol>
-                <p>
-                    This bound is tight: as depth increases, fewer leaves use h=1, so the upper
-                    bound converges to V*. When the search is exact (fully explored), the upper and
-                    lower bounds are equal.
-                </p>
+                <div class="note-box">
+                    <strong>Caveat</strong>: Like the lower bound, this is supported by strong structural
+                    arguments and extensive empirical testing, but is not a rigorous proof. When the search
+                    is exact (fully explored), both bounds converge to the true value.
+                </div>
             </section>
 
             <!-- Implementation Notes -->

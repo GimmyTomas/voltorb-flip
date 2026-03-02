@@ -208,12 +208,20 @@ private:
     DepthLimitedResult depthLimitedSearch(const SearchState& state, int depthLimit);
 
     /**
+     * Result of heuristic evaluation: lower and upper bounds.
+     */
+    struct HeuristicResult {
+        double lower;
+        double upper;
+    };
+
+    /**
      * Heuristic evaluation for leaf nodes when depth limit is reached.
-     * Estimates win probability based on:
-     * - Number of remaining multipliers to reveal
+     * Returns lower and upper bounds on win probability based on:
+     * - Number of remaining multipliers to reveal (max across boards for lower, min for upper)
      * - Distribution of voltorb probabilities among unknown panels
      */
-    double heuristicEval(const SearchState& state);
+    HeuristicResult heuristicEval(const SearchState& state);
 
     /**
      * Check if the game is won (all multipliers revealed).

@@ -684,11 +684,12 @@ function revealPanel(state, pos, value) {
 
 /**
  * Heuristic evaluation for leaf nodes.
+ * Returns { lower, upper } bounds on win probability.
  */
 function heuristicEval(state) {
-    if (isWon(state)) return 1.0;
+    if (isWon(state)) return { lower: 1.0, upper: 1.0 };
 
-    // Count multipliers still needed
+    // Count multipliers still needed (max across boards = pessimistic for lower bound)
     let multipliersNeeded = 0;
     for (let i = 0; i < BOARD_SIZE; i++) {
         for (let j = 0; j < BOARD_SIZE; j++) {
@@ -707,7 +708,27 @@ function heuristicEval(state) {
         }
     }
 
-    if (multipliersNeeded === 0) return 1.0;
+    if (multipliersNeeded === 0) return { lower: 1.0, upper: 1.0 };
+
+    // Compute M_min: minimum unrevealed multipliers across all compatible boards
+    let mMin = multipliersNeeded;
+    for (const boards of state.boardsByType) {
+        for (const b of boards) {
+            let boardMult = 0;
+            for (let i = 0; i < BOARD_SIZE; i++) {
+                for (let j = 0; j < BOARD_SIZE; j++) {
+                    if (state.board.get(i, j) === PanelValue.Unknown) {
+                        if (isMultiplier(b.get(i, j))) {
+                            boardMult++;
+                        }
+                    }
+                }
+            }
+            if (boardMult < mMin) {
+                mMin = boardMult;
+            }
+        }
+    }
 
     // Collect voltorb probabilities for risky panels
     const voltorbProbs = [];
@@ -723,17 +744,29 @@ function heuristicEval(state) {
         }
     }
 
-    if (voltorbProbs.length === 0) return 1.0;
+    if (voltorbProbs.length === 0) return { lower: 1.0, upper: 1.0 };
 
-    // Sort and estimate survival probability
+    // Sort by risk (lowest first)
     voltorbProbs.sort((a, b) => a - b);
-    const panelsToReveal = Math.min(voltorbProbs.length, multipliersNeeded);
-    let survivalProd = 1.0;
-    for (let i = 0; i < panelsToReveal; i++) {
-        survivalProd *= (1 - voltorbProbs[i]);
+
+    // Lower bound: survive the safest multipliersNeeded panels
+    const panelsLower = Math.min(voltorbProbs.length, multipliersNeeded);
+    let lowerProd = 1.0;
+    for (let i = 0; i < panelsLower; i++) {
+        lowerProd *= (1 - voltorbProbs[i]);
     }
 
-    return survivalProd;
+    // Upper bound: survive the safest M_min panels
+    // If M_min == 0, some board has all multipliers revealed → upper = 1.0 (empty product)
+    let upperProd = 1.0;
+    if (mMin > 0) {
+        const panelsUpper = Math.min(voltorbProbs.length, mMin);
+        for (let i = 0; i < panelsUpper; i++) {
+            upperProd *= (1 - voltorbProbs[i]);
+        }
+    }
+
+    return { lower: lowerProd, upper: upperProd };
 }
 
 /**
@@ -744,7 +777,8 @@ function depthLimitedSearch(state, depthLimit, memo, nodesRef, startTime, timeou
 
     // Timeout check
     if (Date.now() - startTime > timeout) {
-        return { bestPanel: null, winProb: heuristicEval(state), winProbUpper: 1.0, fullyExplored: false };
+        const h = heuristicEval(state);
+        return { bestPanel: null, winProb: h.lower, winProbUpper: h.upper, fullyExplored: false };
     }
 
     // Win check
@@ -754,7 +788,8 @@ function depthLimitedSearch(state, depthLimit, memo, nodesRef, startTime, timeou
 
     // Depth limit reached
     if (depthLimit <= 0) {
-        return { bestPanel: null, winProb: heuristicEval(state), winProbUpper: 1.0, fullyExplored: false };
+        const h = heuristicEval(state);
+        return { bestPanel: null, winProb: h.lower, winProbUpper: h.upper, fullyExplored: false };
     }
 
     // Memoization check

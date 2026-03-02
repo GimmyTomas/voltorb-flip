@@ -221,8 +221,8 @@ DepthLimitedResult Solver::depthLimitedSearch(const SearchState& state, int dept
 
     // At depth 0, use heuristic evaluation
     if (depthLimit <= 0) {
-        double h = heuristicEval(state);
-        return {{0, 0}, h, 1.0, false};
+        auto h = heuristicEval(state);
+        return {{0, 0}, h.lower, h.upper, false};
     }
 
     // Check memo table
@@ -236,7 +236,8 @@ DepthLimitedResult Solver::depthLimitedSearch(const SearchState& state, int dept
 
     // Check timeout
     if (checkTimeout()) {
-        return {{0, 0}, heuristicEval(state), 1.0, false};
+        auto h = heuristicEval(state);
+        return {{0, 0}, h.lower, h.upper, false};
     }
 
     // Check for free panel
@@ -333,13 +334,13 @@ DepthLimitedResult Solver::depthLimitedSearch(const SearchState& state, int dept
     return {bestPanel, bestWinProb, bestWinProbUpper, allFullyExplored};
 }
 
-double Solver::heuristicEval(const SearchState& state) {
+Solver::HeuristicResult Solver::heuristicEval(const SearchState& state) {
     // If won, return 1.0
     if (isWon(state)) {
-        return 1.0;
+        return {1.0, 1.0};
     }
 
-    // Count remaining multipliers needed
+    // Count remaining multipliers needed (max across boards = pessimistic for lower bound)
     size_t multipliersNeeded = 0;
 
     // Check each unknown panel to see if it could be a multiplier
@@ -363,7 +364,29 @@ double Solver::heuristicEval(const SearchState& state) {
     }
 
     if (multipliersNeeded == 0) {
-        return 1.0;  // All multipliers already revealed
+        return {1.0, 1.0};  // All multipliers already revealed
+    }
+
+    // Compute M_min: minimum unrevealed multipliers across all compatible boards
+    // (optimistic for upper bound — less work needed)
+    size_t mMin = multipliersNeeded;  // Start at max; will take min
+    for (BoardTypeIndex type = 0; type < NUM_TYPES_PER_LEVEL; type++) {
+        for (size_t idx : state.indicesPerType[type]) {
+            size_t boardMult = 0;
+            for (size_t i = 0; i < BOARD_SIZE; i++) {
+                for (size_t j = 0; j < BOARD_SIZE; j++) {
+                    if (state.board.get(static_cast<uint8_t>(i), static_cast<uint8_t>(j)) == PanelValue::Unknown) {
+                        if (isMultiplier(allBoards_[idx].get(
+                                static_cast<uint8_t>(i), static_cast<uint8_t>(j)))) {
+                            boardMult++;
+                        }
+                    }
+                }
+            }
+            if (boardMult < mMin) {
+                mMin = boardMult;
+            }
+        }
     }
 
     // Collect voltorb probabilities for risky panels
@@ -383,22 +406,30 @@ double Solver::heuristicEval(const SearchState& state) {
     }
 
     if (voltorbProbs.empty()) {
-        return 1.0;  // No risky panels - guaranteed win
+        return {1.0, 1.0};  // No risky panels - guaranteed win
     }
 
     // Sort by risk (lowest first - these are the panels we'd reveal first)
     std::sort(voltorbProbs.begin(), voltorbProbs.end());
 
-    // Estimate: product of survival probabilities for the safest panels
-    // we'd need to reveal to get all multipliers
-    size_t panelsToReveal = std::min(voltorbProbs.size(), multipliersNeeded);
-    double survivalProd = 1.0;
-
-    for (size_t i = 0; i < panelsToReveal; i++) {
-        survivalProd *= (1.0 - voltorbProbs[i]);
+    // Lower bound: product of survival probabilities for the safest multipliersNeeded panels
+    size_t panelsLower = std::min(voltorbProbs.size(), multipliersNeeded);
+    double lowerProd = 1.0;
+    for (size_t i = 0; i < panelsLower; i++) {
+        lowerProd *= (1.0 - voltorbProbs[i]);
     }
 
-    return survivalProd;
+    // Upper bound: product of survival probabilities for the safest M_min panels
+    // If M_min == 0, some board has all multipliers revealed → upper = 1.0 (empty product)
+    double upperProd = 1.0;
+    if (mMin > 0) {
+        size_t panelsUpper = std::min(voltorbProbs.size(), mMin);
+        for (size_t i = 0; i < panelsUpper; i++) {
+            upperProd *= (1.0 - voltorbProbs[i]);
+        }
+    }
+
+    return {lowerProd, upperProd};
 }
 
 bool Solver::isWon(const SearchState& state) const {

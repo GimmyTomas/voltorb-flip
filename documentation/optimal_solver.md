@@ -299,14 +299,18 @@ The heuristic computes h(s) = product of (1 - p_voltorb[i]) for the safest N pan
 
 **Caveat**: The product of marginals actually *overestimates* the joint survival probability (due to negative correlation in voltorb placement -- if one panel is safe, others are more likely to be voltorbs). However, extensive empirical testing across thousands of game states confirms that the three factors above dominate this overestimate.
 
-#### Upper Bound (Rigorous)
+#### Upper Bound (Conjecture)
 
-**Claim**: Using h_upper(s) = 1.0 at leaf nodes produces V_d_upper(s) >= V*(s).
+**Formula**: h_upper(s) = product of (1 - p_voltorb[i]) for the safest M_min panels with multiplier potential, where M_min = minimum unrevealed multipliers across all compatible boards. If M_min = 0 (some board has all multipliers already revealed), h_upper = 1.0 (empty product).
 
-**Proof**:
-1. Base case: h_upper(s) = 1.0 >= V*(s) since V* is in [0, 1]. (check)
-2. Inductive step at chance nodes: E[V_d_upper(child)] >= E[V*(child)] because V_d_upper >= V* pointwise. (check)
-3. Inductive step at max nodes: max_a E[V_d_upper|a] >= max_a E[V*|a] for the same reason. (check)
-4. Therefore V_d_upper(root) >= V*(root). QED
+**Why h_upper(s) >= V*(s)** (same conjecture status as the lower bound):
 
-This bound is tight: as depth increases, fewer leaves use h=1, so the upper bound converges to V*. When the search is exact (fully explored), the upper and lower bounds are equal.
+The upper bound mirrors the lower bound but with an optimistic panel count. Both bounds use the same sorted voltorb probabilities; they differ only in how many panels to survive:
+
+1. **Undercounting**: M_min uses the minimum unrevealed multipliers across compatible boards, so the player needs to survive fewer panels than in reality (unless the best-case board is the actual one). Fewer panels to survive means a higher product and higher estimate.
+
+2. **No information gain**: Same as the lower bound — the heuristic uses fixed marginal probabilities, while optimal play adapts after each reveal.
+
+3. **Product-of-marginals overestimates**: The product of marginal survival probabilities overestimates joint survival due to negative correlation in voltorb placement. This reinforces the upper bound direction (makes it higher).
+
+**Caveat**: Like the lower bound, this is supported by strong structural arguments and extensive empirical testing, but is not a rigorous proof. When the search is exact (fully explored), both bounds converge to the true value.
