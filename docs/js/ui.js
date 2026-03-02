@@ -644,8 +644,8 @@ export class UI {
     // Set WASM availability
     setWasmAvailable(available) {
         if (available) {
-            this.wasmStatus.textContent = 'Ready';
-            this.wasmStatus.className = 'wasm-status ready';
+            this.wasmStatus.textContent = '';
+            this.wasmStatus.className = 'wasm-status';
         } else {
             this.wasmStatus.textContent = 'Error';
             this.wasmStatus.className = 'wasm-status error';

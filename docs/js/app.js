@@ -195,14 +195,24 @@ class App {
         // Solver backend change
         this.ui.onSolverBackendChange = (backend) => {
             this.useWasm = (backend === 'wasm');
+
+            // Clear stale results from the previous engine
+            this.solverResult = null;
+            this.updateDisplay();
+
             if (this.useWasm) {
-                // Preload WASM module
+                // Preload WASM, then re-solve if auto (handled in wasmReady handler)
                 this.ui.setWasmLoading(true);
                 if (this.solverWorker) {
                     this.solverWorker.terminate();
                 }
                 this.solverWorker = this.createWorker();
                 this.solverWorker.postMessage({ type: 'preloadWasm' });
+            } else {
+                // Switching to JS — re-solve immediately if auto
+                if (this.autoSolve) {
+                    this.deferSolver();
+                }
             }
         };
     }
@@ -340,6 +350,9 @@ class App {
                 console.error('Solver error:', e.data.message);
             } else if (type === 'wasmReady') {
                 this.ui.setWasmAvailable(true);
+                if (this.autoSolve) {
+                    this.deferSolver();
+                }
             } else if (type === 'wasmError') {
                 console.error('WASM load error:', e.data.message);
                 this.ui.setWasmAvailable(false);

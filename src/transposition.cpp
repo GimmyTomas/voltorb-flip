@@ -34,14 +34,14 @@ void TranspositionTable::store(uint64_t hash, double winProb, Position bestPanel
     size_t index = hash & mask_;
     TranspositionEntry& entry = table_[index];
 
-    // Track collisions (overwriting a different hash)
+    // Depth-preferring replacement: don't evict deeper entries with shallower ones
     if (!entry.isEmpty() && entry.hash != hash) {
+        if (depth < entry.depth) {
+            return;  // Don't evict a deeper entry with a shallower one
+        }
         collisions_++;
     }
 
-    // Replacement policy: always replace
-    // This is simple and works well in practice, especially for iterative deepening
-    // where we want to keep the most recent (deepest) results
     entry.hash = hash;
     entry.winProbability = winProb;
     entry.bestPanel = bestPanel;

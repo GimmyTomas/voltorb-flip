@@ -137,6 +137,7 @@ SolverResult Solver::iterativeDeepening(const SearchState& initialState,
     auto freePanel = findFreePanel(initialState);
 
     for (int depth = 1; depth <= options_.maxDepth && !timedOut_; depth++) {
+        tt_.clear();  // Fresh TT for each depth, matching JS solver behavior
         auto result = depthLimitedSearch(initialState, depth);
 
         bestPanel = result.bestPanel;
