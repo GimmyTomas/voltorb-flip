@@ -71,6 +71,9 @@ target_link_libraries(trace_legacy PRIVATE voltorb_lib legacy_solver_lib)
 add_executable(trace_fill debug/trace_fill.cpp)
 target_link_libraries(trace_fill PRIVATE voltorb_lib legacy_solver_lib)
 
+add_executable(benchmark_solver debug/benchmark_solver.cpp)
+target_link_libraries(benchmark_solver PRIVATE voltorb_lib)
+
 # WebAssembly target (built with Emscripten)
 option(VOLTORB_BUILD_WASM "Build WebAssembly module" OFF)
 
@@ -86,7 +89,7 @@ if(VOLTORB_BUILD_WASM AND EMSCRIPTEN)
         -sENVIRONMENT='worker'
         -sALLOW_MEMORY_GROWTH=1
         -sINITIAL_MEMORY=67108864
-        -sMAXIMUM_MEMORY=134217728
+        -sMAXIMUM_MEMORY=268435456
     )
     set_target_properties(voltorb_wasm PROPERTIES
         OUTPUT_NAME "voltorb_wasm"

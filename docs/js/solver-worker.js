@@ -31,6 +31,18 @@ function deserializeBoard(boardData) {
 function buildResult(progress, probabilities, safePanels, compatibleCount, capped, startTime) {
     let suggestedPanel = progress.bestPanel;
 
+    // Validate suggestedPanel is an actual unknown panel.
+    // C++ returns {0,0} sentinel for won/lost/no-suggestion cases;
+    // WASM bindings wrap it as truthy {row:0, col:0}.
+    if (suggestedPanel && probabilities.panels.length > 0) {
+        const isUnknown = probabilities.panels.some(p =>
+            p.pos.row === suggestedPanel.row && p.pos.col === suggestedPanel.col
+        );
+        if (!isUnknown) {
+            suggestedPanel = null;
+        }
+    }
+
     if (safePanels.length > 0 && !suggestedPanel) {
         let bestSafe = safePanels[0];
         let bestScore = -1;
@@ -230,19 +242,18 @@ async function solveWASM(boardData, options) {
             );
         }
 
-        // Build final result using WASM solver output + JS-computed probabilities
-        const result = {
-            suggestedPanel: wasmResult.suggestedPanel,
+        // Build final result through buildResult() for safe panel fallback
+        const finalProgress = {
+            bestPanel: wasmResult.suggestedPanel,
             winProbability: wasmResult.winProbability,
-            probabilities,
-            safePanels,
-            compatibleCount,
-            capped,
-            computeTime: performance.now() - startTime,
             depth: wasmResult.depth,
             isExact: wasmResult.isExact,
             reason: wasmResult.reason
         };
+        const result = buildResult(
+            finalProgress, probabilities, safePanels,
+            compatibleCount, capped, startTime
+        );
 
         self.postMessage({ type: 'complete', result });
     } catch (err) {

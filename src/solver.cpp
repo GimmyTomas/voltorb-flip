@@ -153,7 +153,7 @@ SolverResult Solver::iterativeDeepening(const SearchState& initialState,
                 std::chrono::steady_clock::now() - startTime_);
 
             SolverProgress progress{
-                bestPanel,
+                freePanel ? *freePanel : bestPanel,
                 bestWinProb,
                 depth,
                 isExact,
