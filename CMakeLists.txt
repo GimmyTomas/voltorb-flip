@@ -81,6 +81,7 @@ if(VOLTORB_BUILD_WASM AND EMSCRIPTEN)
         --bind
         -sNO_EXIT_RUNTIME=1
         -sMODULARIZE=1
+        -sEXPORT_ES6=1
         -sEXPORT_NAME="VoltorbSolverModule"
         -sENVIRONMENT='worker'
         -sALLOW_MEMORY_GROWTH=1
