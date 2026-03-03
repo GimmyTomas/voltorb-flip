@@ -428,7 +428,7 @@ class App {
         console.log('Running solver (sync)...');
         const startTime = performance.now();
 
-        this.solverResult = solve(this.board);
+        this.solverResult = solve(this.board, 500000, { timeout: 500 });
 
         console.log(`Solver completed in ${(performance.now() - startTime).toFixed(1)}ms`);
         console.log(`Compatible boards: ${this.solverResult.compatibleCount}`);
