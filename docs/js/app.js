@@ -543,6 +543,12 @@ class App {
         this.solverRunning = false;
         this.ui.setPauseEnabled(false);
 
+        // Disable auto-solve — self-play uses its own sync solver
+        if (this.autoSolve) {
+            this.autoSolve = false;
+            this.ui.setAutoSolve(false);
+        }
+
         if (!this.solutionBoard) {
             this.newGame();
         }
