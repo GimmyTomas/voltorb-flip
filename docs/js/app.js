@@ -573,18 +573,27 @@ class App {
                 this.solverResult = e.data.result;
                 this.updateDisplay();
 
-                // Reveal the suggested tile, next step chains from animation callback
-                const suggested = this.solverResult?.suggestedPanel;
-                if (suggested) {
-                    this.revealTile(suggested.row, suggested.col);
-                } else {
-                    const unknowns = this.board.getUnknownPositions();
-                    if (unknowns.length > 0) {
-                        this.revealTile(unknowns[0].row, unknowns[0].col);
+                // Ensure each step takes at least `interval` ms for consistent pacing
+                const interval = 2200 - (this.speed * 200);
+                const elapsed = performance.now() - (this.selfPlayStepStart || 0);
+                const delay = Math.max(0, interval - elapsed);
+
+                this.selfPlayTimeout = setTimeout(() => {
+                    if (!this.isPlaying) return;
+
+                    // Reveal the suggested tile, next step chains from animation callback
+                    const suggested = this.solverResult?.suggestedPanel;
+                    if (suggested) {
+                        this.revealTile(suggested.row, suggested.col);
                     } else {
-                        this.pauseAutoPlay();
+                        const unknowns = this.board.getUnknownPositions();
+                        if (unknowns.length > 0) {
+                            this.revealTile(unknowns[0].row, unknowns[0].col);
+                        } else {
+                            this.pauseAutoPlay();
+                        }
                     }
-                }
+                }, delay);
             }
         };
 
@@ -632,6 +641,7 @@ class App {
         if (!this.selfPlayWorker) return;
 
         const interval = 2200 - (this.speed * 200);
+        this.selfPlayStepStart = performance.now();
 
         this.selfPlayWorker.postMessage({
             type: 'solve',
