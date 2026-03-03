@@ -12,7 +12,6 @@ voltorb/
 ├── solver.hpp       # Minimax solver with memoization
 ├── zobrist.hpp      # Zobrist hash key generation
 ├── transposition.hpp # Transposition table for memoization
-├── sampler.hpp      # Monte Carlo sampling fallback (deprecated)
 ├── generator.hpp    # Random board generation
 └── game.hpp         # Game session management
 ```
@@ -123,18 +122,6 @@ Main algorithm:
 3. Find free panels (guaranteed safe with multiplier potential)
 4. Iterative deepening minimax with memoization
 5. Timeout handling → return best depth-limited result
-
-## Sampler (sampler.hpp) — Deprecated
-
-### MonteCarloSampler
-> **Note:** The Monte Carlo sampler is no longer used by the solver. It has been
-> superseded by iterative deepening with heuristic evaluation, which provides
-> principled anytime results. The sampler code is retained for reference only.
-
-Deprecated fallback for intractable boards (no longer used):
-- Rejection sampling of random boards
-- Type weighting by acceptance count
-- Probability estimation from samples
 
 ## Generator (generator.hpp)
 
@@ -253,4 +240,3 @@ In the web GUI, this flow runs inside a Web Worker. The WASM path replaces the m
 ### Parallelism
 - Board enumeration: parallelizable per type
 - Minimax: can parallelize panel evaluation
-- Sampling: embarrassingly parallel

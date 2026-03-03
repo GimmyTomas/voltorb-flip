@@ -253,7 +253,7 @@ Mid-game (fewer unknowns):
 
 ### Timeout Configuration
 
-Default timeout: 10 seconds (C++ CLI), 30 seconds (web GUI, both JS and WASM engines)
+Default timeout: 10 seconds (C++ CLI), 60 seconds (web GUI, both JS and WASM engines)
 
 For interactive use:
 - 1-2 seconds: Good balance of speed and accuracy

@@ -41,8 +41,9 @@
             <section class="docs-section">
                 <h2>2. Why This Solver Is Different</h2>
                 <p>
-                    Most Voltorb Flip solvers share two fundamental limitations that lead to
-                    suboptimal play:
+                    Most Voltorb Flip solvers &mdash; including popular ones like
+                    <a href="http://www.voltorbflip.com" target="_blank" rel="noopener" style="color: var(--hint-orange);">voltorbflip.com</a>
+                    &mdash; share two fundamental limitations that lead to suboptimal play:
                 </p>
 
                 <h3>Limitation 1: Ignoring Board Generation Mechanics</h3>
@@ -206,7 +207,7 @@ T2: 1,407,934,200 valid boards
                 <p>
                     Multiple board types can have the same (n<sub>0</sub>, n<sub>2</sub>, n<sub>3</sub>)
                     but different legality constraints. For correct Bayesian inference, each compatible
-                    board must be counted in <strong>all</strong> types it is legal for, not just the first match.
+                    board must be counted in <strong>all</strong> types it is legal for.
                 </p>
                 <div class="note-box">
                     <strong>Example:</strong> Level 2 has Type 0 and Type 5 both with (n<sub>0</sub>=7, n<sub>2</sub>=1, n<sub>3</sub>=3),
@@ -478,7 +479,7 @@ P(T5 | board) = 5.59 / (4.57 + 5.59) = 55.0%
                         lower bound on the true win probability and improves with deeper search</li>
                 </ul>
                 <p>
-                    The default timeout is 30 seconds. For most boards, the solver reaches an
+                    The default timeout is 60 seconds. For most boards, the solver reaches an
                     exact solution well within this limit.
                 </p>
 
@@ -596,10 +597,10 @@ P(T5 | board) = 5.59 / (4.57 + 5.59) = 55.0%
 
                 <h3>Performance Considerations</h3>
                 <ul>
-                    <li>Compatible board enumeration is capped at 500,000 boards (matching the C++ solver)</li>
+                    <li>Compatible board enumeration is capped at 500,000 boards across all implementations</li>
                     <li>Constraint pruning significantly reduces the search space</li>
                     <li>BigInt is used for N_accepted values (can exceed 10<sup>12</sup>)</li>
-                    <li>Iterative deepening with a 5-second timeout provides anytime results</li>
+                    <li>Iterative deepening with a configurable timeout (default 60 seconds) provides anytime results</li>
                     <li>Memoization via <code>compactKey()</code> (JS) or Zobrist hashing (C++)
                         avoids recomputing the same board states</li>
                 </ul>

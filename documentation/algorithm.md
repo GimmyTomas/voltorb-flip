@@ -131,89 +131,17 @@ This is checked via `hasMultiplierPotential(state, pos)`, which returns true if 
 - If all free panels are useless, `findFreePanel` returns null and the search proceeds to risky panels with multiplier potential
 - If all risky panels are useless, the heuristic returns 1.0 (correct, since remaining multipliers must all be safe)
 
-## Iterative Deepening
+## Solver Implementation
 
-The full minimax tree can be intractable for complex boards. The solver uses **iterative deepening** to provide anytime results:
+The full minimax tree can be intractable for complex boards. The solver uses **iterative deepening** with heuristic evaluation and memoization to provide anytime results that improve with deeper search. Key aspects:
 
-1. Start with depth limit = 1
-2. Run depth-limited minimax with a fresh memoization table
-3. Yield the result (depth N, approximate if depth limit was hit)
-4. Increment depth limit and repeat
-5. Stop when: exact solution found, timeout reached, or max depth reached
+- **Iterative deepening**: Searches at increasing depth limits, yielding the best result so far at each depth
+- **Heuristic evaluation**: At the depth limit, estimates win probability from the survival product of the safest panels
+- **Memoization**: C++ uses Zobrist hashing with a fixed-size transposition table; JavaScript uses `compactKey()` with a `Map`
+- **Pruning**: Upper-bound pruning, useless panel pruning, and free panel short-circuiting
+- **Timeout**: Configurable (60s default in web GUI, 10s for C++ CLI)
 
-### Depth-Limited Search
-
-At each depth, the solver performs bounded expectimax:
-- **Win check**: Return 1.0 if all multipliers revealed
-- **Depth limit reached**: Return heuristic evaluation (see below)
-- **Memo lookup**: Return cached result if available
-- **Free panels**: Reveal without spending depth (must have multiplier potential)
-- **Risky panels**: Loop over panels with multiplier potential, upper-bound pruning, recurse at depthLimit-1
-
-### Heuristic Evaluation
-
-At the depth limit, win probability is estimated by:
-1. Count remaining multipliers to reveal (panels with multiplier potential)
-2. Collect Voltorb probability of each risky panel with multiplier potential
-3. Sort by risk (lowest Voltorb probability first)
-4. Return product of survival probabilities for the N safest panels
-
-Panels without multiplier potential are excluded from both counts, since they
-cannot contribute to winning and flipping them is never beneficial.
-
-### Timeout Handling
-
-The solver monitors elapsed time and returns the best depth-limited result when:
-- Time exceeds configured timeout (30s default in web GUI, 10s for C++ CLI)
-
-Results are marked as "approximate" when the full tree was not explored.
-
-### Monte Carlo Fallback (Deprecated)
-
-The previous Monte Carlo sampling fallback has been superseded by iterative deepening with heuristic evaluation. The iterative deepening approach provides principled anytime results that improve monotonically with depth, unlike Monte Carlo which gave inconsistent estimates.
-
-## Complexity Analysis
-
-### Exhaustive Search
-
-- **Compatible boards**: Can be millions for early-game positions
-- **Recursion depth**: Up to 25 (one per panel)
-- **Memoization**: Essential for tractable computation
-
-### Iterative Deepening
-
-- **Per-depth cost**: Bounded by depth limit and memoization
-- **Heuristic evaluation**: O(unknown panels) at leaf nodes
-- **Anytime property**: Each depth iteration improves on the previous
-
-## Implementation Details
-
-### Memoization
-
-Board states are hashed for cache lookup. Two strategies are used:
-
-**C++ (Zobrist hashing + transposition table):**
-- Incremental XOR hash updates when revealing panels (O(1) per update)
-- Fixed-size power-of-2 transposition table with full hash verification
-- Depth tracking: only use cached result if stored depth >= current depth
-
-**JavaScript (`compactKey()` + Map):**
-- String key = level + 25 panel digits (each panel value shifted to single digit)
-- Collision-free by construction
-- Fresh `Map` created for each depth iteration to prevent stale results
-
-### Early Termination
-
-1. **Free panels**: Skip full minimax when safe panels with multiplier potential exist
-2. **Useless panel pruning**: Skip panels that can only be 1 or Voltorb
-3. **Alpha-beta**: Prune branches that can't improve best found
-4. **Timeout**: Return best result from current depth
-
-### Parallel Enumeration
-
-Board generation can be parallelized across:
-- Voltorb position configurations (per row)
-- Non-Voltorb value assignments (per type)
+For full details on iterative deepening, depth-limited search, heuristic evaluation, approximation bounds, and performance characteristics, see [optimal_solver.md](optimal_solver.md).
 
 ## References
 
