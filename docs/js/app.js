@@ -317,6 +317,8 @@ class App {
             } else if (result === GameResult.Lost) {
                 this.pauseAutoPlay();
                 this.ui.showGameOverModal(false, 'You hit a Voltorb!');
+            } else if (this.isPlaying) {
+                this.autoPlayStep();
             }
         });
     }
@@ -556,7 +558,46 @@ class App {
         this.isPlaying = true;
         this.ui.setPlaying(true);
 
-        // Start the chain (each step schedules the next)
+        // Create persistent worker for self-play
+        this.selfPlayWorker = new Worker('./js/solver-worker.js', { type: 'module' });
+
+        this.selfPlayWorker.onmessage = (e) => {
+            if (!this.isPlaying) return;
+            const { type } = e.data;
+
+            if (type === 'progress') {
+                // Update display with intermediate results while solving
+                this.solverResult = e.data.result;
+                this.updateDisplay();
+            } else if (type === 'complete') {
+                this.solverResult = e.data.result;
+                this.updateDisplay();
+
+                // Reveal the suggested tile, next step chains from animation callback
+                const suggested = this.solverResult?.suggestedPanel;
+                if (suggested) {
+                    this.revealTile(suggested.row, suggested.col);
+                } else {
+                    const unknowns = this.board.getUnknownPositions();
+                    if (unknowns.length > 0) {
+                        this.revealTile(unknowns[0].row, unknowns[0].col);
+                    } else {
+                        this.pauseAutoPlay();
+                    }
+                }
+            }
+        };
+
+        this.selfPlayWorker.onerror = (err) => {
+            console.error('Self-play worker error:', err);
+            this.pauseAutoPlay();
+        };
+
+        // Preload WASM if enabled, then start
+        if (this.useWasm) {
+            this.selfPlayWorker.postMessage({ type: 'preloadWasm' });
+        }
+
         this.autoPlayStep();
     }
 
@@ -572,13 +613,13 @@ class App {
             this.selfPlayTimeout = null;
         }
 
-        if (this.solverWorker) {
-            this.solverWorker.terminate();
-            this.solverWorker = null;
+        if (this.selfPlayWorker) {
+            this.selfPlayWorker.terminate();
+            this.selfPlayWorker = null;
         }
     }
 
-    // Single auto-play step — uses async worker to avoid blocking UI
+    // Single auto-play step — sends solve to persistent worker with timeout = step interval
     autoPlayStep() {
         if (!this.isPlaying) return;
 
@@ -588,60 +629,17 @@ class App {
             return;
         }
 
-        // Terminate previous worker if still running
-        if (this.solverWorker) {
-            this.solverWorker.terminate();
-            this.solverWorker = null;
-        }
+        if (!this.selfPlayWorker) return;
 
-        const worker = new Worker('./js/solver-worker.js', { type: 'module' });
-        this.solverWorker = worker;
-        let handled = false;
+        const interval = 2200 - (this.speed * 200);
 
-        worker.onmessage = (e) => {
-            if (handled || !this.isPlaying) return;
-            const { type } = e.data;
-
-            if (type === 'progress' || type === 'complete') {
-                handled = true;
-                this.solverResult = e.data.result;
-                this.updateDisplay();
-
-                // Depth 1 is enough for self-play — terminate worker
-                worker.terminate();
-                this.solverWorker = null;
-
-                // Reveal the suggested tile
-                const suggested = this.solverResult?.suggestedPanel;
-                if (suggested) {
-                    this.revealTile(suggested.row, suggested.col);
-                } else {
-                    const unknowns = this.board.getUnknownPositions();
-                    if (unknowns.length > 0) {
-                        this.revealTile(unknowns[0].row, unknowns[0].col);
-                    } else {
-                        this.pauseAutoPlay();
-                        return;
-                    }
-                }
-
-                // Schedule next step after speed-based interval
-                const interval = 2200 - (this.speed * 200);
-                this.selfPlayTimeout = setTimeout(() => {
-                    this.autoPlayStep();
-                }, interval);
-            }
-        };
-
-        worker.onerror = (err) => {
-            console.error('Self-play solver error:', err);
-            this.pauseAutoPlay();
-        };
-
-        worker.postMessage({
+        this.selfPlayWorker.postMessage({
             type: 'solve',
             boardData: this.serializeBoard(this.board),
-            options: { timeout: 2000, useWasm: this.useWasm }
+            options: {
+                timeout: interval,
+                useWasm: this.useWasm
+            }
         });
     }
 }
