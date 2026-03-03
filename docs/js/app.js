@@ -30,7 +30,7 @@ class App {
 
         // Self-play state
         this.isPlaying = false;
-        this.playInterval = null;
+        this.selfPlayTimeout = null;
         this.speed = 5; // 1-10
 
         this.setupCallbacks();
@@ -428,7 +428,7 @@ class App {
         console.log('Running solver (sync)...');
         const startTime = performance.now();
 
-        this.solverResult = solve(this.board, 500000, { timeout: 500 });
+        this.solverResult = solve(this.board);
 
         console.log(`Solver completed in ${(performance.now() - startTime).toFixed(1)}ms`);
         console.log(`Compatible boards: ${this.solverResult.compatibleCount}`);
@@ -543,7 +543,7 @@ class App {
         this.solverRunning = false;
         this.ui.setPauseEnabled(false);
 
-        // Disable auto-solve — self-play uses its own sync solver
+        // Disable auto-solve — self-play uses its own worker
         if (this.autoSolve) {
             this.autoSolve = false;
             this.ui.setAutoSolve(false);
@@ -556,13 +556,8 @@ class App {
         this.isPlaying = true;
         this.ui.setPlaying(true);
 
-        // Calculate interval based on speed (1-10)
-        // Speed 1 = 2000ms, Speed 10 = 200ms
-        const interval = 2200 - (this.speed * 200);
-
-        this.playInterval = setInterval(() => {
-            this.autoPlayStep();
-        }, interval);
+        // Start the chain (each step schedules the next)
+        this.autoPlayStep();
     }
 
     // Pause auto-play
@@ -572,36 +567,82 @@ class App {
         this.isPlaying = false;
         this.ui.setPlaying(false);
 
-        if (this.playInterval) {
-            clearInterval(this.playInterval);
-            this.playInterval = null;
+        if (this.selfPlayTimeout) {
+            clearTimeout(this.selfPlayTimeout);
+            this.selfPlayTimeout = null;
+        }
+
+        if (this.solverWorker) {
+            this.solverWorker.terminate();
+            this.solverWorker = null;
         }
     }
 
-    // Single auto-play step
+    // Single auto-play step — uses async worker to avoid blocking UI
     autoPlayStep() {
-        // Check if game is over
+        if (!this.isPlaying) return;
+
         const result = this.board.checkGameResult();
         if (result !== GameResult.InProgress) {
             this.pauseAutoPlay();
             return;
         }
 
-        // Run solver synchronously to find best move
-        this.runSolverSync();
-
-        if (this.solverResult?.suggestedPanel) {
-            const { row, col } = this.solverResult.suggestedPanel;
-            this.revealTile(row, col);
-        } else {
-            // No suggested panel - pick first unknown
-            const unknowns = this.board.getUnknownPositions();
-            if (unknowns.length > 0) {
-                this.revealTile(unknowns[0].row, unknowns[0].col);
-            } else {
-                this.pauseAutoPlay();
-            }
+        // Terminate previous worker if still running
+        if (this.solverWorker) {
+            this.solverWorker.terminate();
+            this.solverWorker = null;
         }
+
+        const worker = new Worker('./js/solver-worker.js', { type: 'module' });
+        this.solverWorker = worker;
+        let handled = false;
+
+        worker.onmessage = (e) => {
+            if (handled || !this.isPlaying) return;
+            const { type } = e.data;
+
+            if (type === 'progress' || type === 'complete') {
+                handled = true;
+                this.solverResult = e.data.result;
+                this.updateDisplay();
+
+                // Depth 1 is enough for self-play — terminate worker
+                worker.terminate();
+                this.solverWorker = null;
+
+                // Reveal the suggested tile
+                const suggested = this.solverResult?.suggestedPanel;
+                if (suggested) {
+                    this.revealTile(suggested.row, suggested.col);
+                } else {
+                    const unknowns = this.board.getUnknownPositions();
+                    if (unknowns.length > 0) {
+                        this.revealTile(unknowns[0].row, unknowns[0].col);
+                    } else {
+                        this.pauseAutoPlay();
+                        return;
+                    }
+                }
+
+                // Schedule next step after speed-based interval
+                const interval = 2200 - (this.speed * 200);
+                this.selfPlayTimeout = setTimeout(() => {
+                    this.autoPlayStep();
+                }, interval);
+            }
+        };
+
+        worker.onerror = (err) => {
+            console.error('Self-play solver error:', err);
+            this.pauseAutoPlay();
+        };
+
+        worker.postMessage({
+            type: 'solve',
+            boardData: this.serializeBoard(this.board),
+            options: { timeout: 2000, useWasm: this.useWasm }
+        });
     }
 }
 
